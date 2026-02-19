@@ -27,12 +27,14 @@ import {
   BarChart3,
   GitBranch,
   DoorOpen,
+  Bot
 } from 'lucide-react';
 
 const mainNavItems = [
   { title: 'בית', url: '/', icon: LayoutDashboard },
   { title: 'עובדים', url: '/employees', icon: Users },
   { title: 'דשבורדים ויזואליים', url: '/analytics', icon: BarChart3 },
+  { title: 'עוזר AI', url: '/ai-assistant', icon: Bot },
 ];
 
 const adminNavItems = [
@@ -97,18 +99,16 @@ export function AppSidebar() {
               {mainNavItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                      <NavLink
-                        to={item.url}
-                        end
-                        className={`flex items-center py-2.5 rounded-lg transition-all duration-200 ${
-                          collapsed ? 'justify-center px-2' : 'gap-3 px-3'
-                        } ${
-                          isActive(item.url)
-                            ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                            : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                    <NavLink
+                      to={item.url}
+                      end
+                      className={`flex items-center py-2.5 rounded-lg transition-all duration-200 ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'
+                        } ${isActive(item.url)
+                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
                         }`}
-                        activeClassName="bg-sidebar-primary text-sidebar-primary-foreground"
-                      >
+                      activeClassName="bg-sidebar-primary text-sidebar-primary-foreground"
+                    >
                       <item.icon className="w-5 h-5 flex-shrink-0" />
                       {!collapsed && <span>{item.title}</span>}
                     </NavLink>
@@ -124,7 +124,7 @@ export function AppSidebar() {
             {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs px-3">ניהול</SidebarGroupLabel>}
             <SidebarGroupContent>
               <SidebarMenu>
-              {adminNavItems.map((item) => {
+                {adminNavItems.map((item) => {
                   // Only super_admin can access user management
                   if (item.url === '/admin/users' && !isSuperAdmin) {
                     return null;
@@ -135,13 +135,11 @@ export function AppSidebar() {
                         <NavLink
                           to={item.url}
                           end
-                          className={`flex items-center py-2.5 rounded-lg transition-all duration-200 ${
-                            collapsed ? 'justify-center px-2' : 'gap-3 px-3'
-                          } ${
-                            isActive(item.url)
+                          className={`flex items-center py-2.5 rounded-lg transition-all duration-200 ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'
+                            } ${isActive(item.url)
                               ? 'bg-sidebar-primary text-sidebar-primary-foreground'
                               : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                          }`}
+                            }`}
                           activeClassName="bg-sidebar-primary text-sidebar-primary-foreground"
                         >
                           <item.icon className="w-5 h-5 flex-shrink-0" />
