@@ -8,6 +8,7 @@ import {
     BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
     PieChart, Pie, Cell, CartesianGrid, Legend
 } from "recharts";
+import { supabase } from "@/integrations/supabase/client";
 
 type MessageOutput =
     | { type: "text"; text: string }
@@ -148,35 +149,47 @@ export default function AiAssistant() {
     };
 
     const fetchGroq = async (query: string): Promise<string> => {
-        const groqMessages = [
-            { role: "system", content: SYSTEM_PROMPT },
-            ...messages.filter(m => m.id !== "welcome").map(m => ({
-                role: m.role,
-                content: m.content
-            })),
-            { role: "user", content: query }
-        ];
+        const { data: { session } } = await supabase.auth.getSession();
 
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-sql`, {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${apiKey}`
+                "Authorization": `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`
             },
             body: JSON.stringify({
-                model: "llama-3.3-70b-versatile",
-                messages: groqMessages,
-                temperature: 0.7,
+                query: query,
+                apiKey: apiKey
             })
         });
 
         if (!res.ok) {
-            const error = await res.json();
-            throw new Error(error.error?.message || "Failed to fetch from Groq");
+            const errorText = await res.text();
+            throw new Error(errorText || "Failed to fetch from Text2SQL Function");
         }
 
         const data = await res.json();
-        return data.choices[0].message.content;
+
+        // Structure the returned data nicely
+        let formattedOutput = "";
+
+        if (data.data && Array.isArray(data.data)) {
+            // Count total
+            if (data.data.length === 1 && Object.keys(data.data[0]).length === 1 && typeof Object.values(data.data[0])[0] === 'number') {
+                const keyName = Object.keys(data.data[0])[0];
+                const val = data.data[0][keyName];
+                formattedOutput = `\`\`\`json\n{ "type": "number", "title": "תוצאה", "value": ${val} }\n\`\`\``;
+            } else if (data.data.length > 0) {
+                // Format as generic text table / list for now
+                const head = Object.keys(data.data[0]).join(" | ");
+                const rows = data.data.map((r: any) => Object.values(r).join(" | ")).join("\n");
+                formattedOutput = `מצאתי ${data.data.length} רשומות רלוונטיות:\n\n${head}\n${"-".repeat(head.length)}\n${rows}`;
+            } else {
+                formattedOutput = "השאילתה רצה בהצלחה אך לא החזירה נתונים.";
+            }
+        }
+
+        return `${data.message}\n\n**SQL שנוצר:**\n\`\`\`sql\n${data.generatedSQL}\n\`\`\`\n\n${formattedOutput}`;
     };
 
     const handleSend = async () => {
