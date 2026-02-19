@@ -69,8 +69,8 @@ Example Number Output:
 Always use realistic mock data for your answers. Answer in Hebrew. Keep your text responses concise and clear.`;
 
 export default function AiAssistant() {
-    const [apiKey, setApiKey] = useState(() => localStorage.getItem("groq_api_key") || "");
-    const [isKeySaved, setIsKeySaved] = useState(!!apiKey);
+    const [apiKey, setApiKey] = useState(() => localStorage.getItem("groq_api_key") || import.meta.env.VITE_GROQ_API_KEY || "");
+    const [isKeySaved, setIsKeySaved] = useState(!!apiKey || !!import.meta.env.VITE_GROQ_API_KEY);
     const [keyInput, setKeyInput] = useState("");
 
     const [messages, setMessages] = useState<Message[]>([
