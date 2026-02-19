@@ -1,0 +1,1 @@
+ALTER TABLE public.employees ADD COLUMN company_retention_plan text DEFAULT NULL;

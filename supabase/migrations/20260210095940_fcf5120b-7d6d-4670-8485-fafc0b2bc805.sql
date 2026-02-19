@@ -1,0 +1,1 @@
+ALTER TABLE public.employees ADD COLUMN our_sourcing boolean DEFAULT false;

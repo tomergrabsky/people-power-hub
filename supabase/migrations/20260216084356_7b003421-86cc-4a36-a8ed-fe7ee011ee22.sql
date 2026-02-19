@@ -1,0 +1,1 @@
+ALTER TABLE public.employees ADD COLUMN company_attrition_risk integer DEFAULT NULL;
