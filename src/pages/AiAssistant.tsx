@@ -2,8 +2,8 @@ import { useState, useRef, useEffect } from "react";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, Send, Bot, User, Sparkles } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Loader2, Send, Bot, User, Sparkles, Key, ExternalLink } from "lucide-react";
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
     PieChart, Pie, Cell, CartesianGrid, Legend
@@ -24,13 +24,61 @@ type Message = {
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
+const SYSTEM_PROMPT = `You are a helpful HR assistant for 'People Power Hub'. You can answer questions about the company's HR data.
+If the user asks for a chart or graph, you MUST output the chart data inside a json code block \`\`\`json ... \`\`\`.
+Supported chart types are 'bar' and 'pie'.
+
+Example Bar Chart Output:
+\`\`\`json
+{
+  "type": "bar",
+  "title": "עובדים לפי רמת ותק",
+  "data": [
+    { "level": "Junior", "count": 45 },
+    { "level": "Mid", "count": 80 },
+    { "level": "Senior", "count": 35 }
+  ],
+  "xKey": "level",
+  "yKey": "count"
+}
+\`\`\`
+
+Example Pie Chart Output:
+\`\`\`json
+{
+  "type": "pie",
+  "title": "התפלגות לפי סטטוס",
+  "data": [
+    { "name": "פעיל", "value": 150 },
+    { "name": "עזב", "value": 45 }
+  ],
+  "nameKey": "name",
+  "valueKey": "value"
+}
+\`\`\`
+
+Example Number Output:
+\`\`\`json
+{
+  "type": "number",
+  "title": "סה\\"כ עובדים פעילים",
+  "value": 150
+}
+\`\`\`
+
+Always use realistic mock data for your answers. Answer in Hebrew. Keep your text responses concise and clear.`;
+
 export default function AiAssistant() {
+    const [apiKey, setApiKey] = useState(() => localStorage.getItem("groq_api_key") || "");
+    const [isKeySaved, setIsKeySaved] = useState(!!apiKey);
+    const [keyInput, setKeyInput] = useState("");
+
     const [messages, setMessages] = useState<Message[]>([
         {
             id: "welcome",
             role: "assistant",
-            content: "שלום! אני עוזר ה-AI שלך. אני יכול לענות על שאלות לגבי הנתונים שלך, ולהציג את התשובה בטקסט, במספרים או בגרפים. (משתמש כרגע במודל מקומי חינמי)",
-            parsedContent: [{ type: "text", text: "שלום! אני עוזר ה-AI שלך. אני יכול לענות על שאלות לגבי הנתונים שלך, ולהציג את התשובה בטקסט, במספרים או בגרפים. (משתמש כרגע במודל מקומי חינמי או בנתוני הדגמה במידה ואין מודל זמין)." }]
+            content: "שלום! אני עוזר ה-AI שלך שמבוסס על Groq (Llama 3.3). אני יכול לענות על שאלות לגבי הנתונים שלך, ולהציג את התשובה בטקסט, במספרים או בגרפים דינמיים! מה תרצה לדעת?",
+            parsedContent: [{ type: "text", text: "שלום! אני עוזר ה-AI שלך שמבוסס על Groq (Llama 3.3). אני יכול לענות על שאלות לגבי הנתונים שלך, ולהציג את התשובה בטקסט, במספרים או בגרפים דינמיים! מה תרצה לדעת?" }]
         }
     ]);
     const [input, setInput] = useState("");
@@ -40,6 +88,20 @@ export default function AiAssistant() {
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    const saveApiKey = () => {
+        if (!keyInput.trim()) return;
+        localStorage.setItem("groq_api_key", keyInput.trim());
+        setApiKey(keyInput.trim());
+        setIsKeySaved(true);
+    };
+
+    const clearApiKey = () => {
+        localStorage.removeItem("groq_api_key");
+        setApiKey("");
+        setIsKeySaved(false);
+        setKeyInput("");
+    };
 
     const parseAIContent = (text: string): MessageOutput[] => {
         const outputs: MessageOutput[] = [];
@@ -85,56 +147,36 @@ export default function AiAssistant() {
         return outputs;
     };
 
-    const simulateLocalLLM = async (query: string): Promise<string> => {
-        // We can try fetching from local Ollama here, but for safety we mock based on keywords
-        return new Promise(resolve => {
-            setTimeout(() => {
-                if (query.includes('גרף') || query.includes('פאי') || query.includes('התפלגות')) {
-                    if (query.includes('פאי')) {
-                        resolve(`הנה התפלגות סטטוס העובדים כרגע:
-\`\`\`json
-{
-  "type": "pie",
-  "title": "התפלגות עובדים לפי סטטוס",
-  "data": [
-    { "name": "פעיל", "value": 150 },
-    { "name": "בהליך קליטה", "value": 30 },
-    { "name": "עזב", "value": 45 }
-  ],
-  "nameKey": "name",
-  "valueKey": "value"
-}
-\`\`\``);
-                    } else {
-                        resolve(`הנה גרף התפלגות של דרגות השכר (Seniority Levels) במערכת:
-\`\`\`json
-{
-  "type": "bar",
-  "title": "עובדים לפי רמת ותק",
-  "data": [
-    { "level": "Junior", "count": 45 },
-    { "level": "Mid", "count": 80 },
-    { "level": "Senior", "count": 35 }
-  ],
-  "xKey": "level",
-  "yKey": "count"
-}
-\`\`\``);
-                    }
-                } else if (query.includes('כמה') || query.includes('סה"כ') || query.includes('מספר')) {
-                    resolve(`סיכמתי את הנתונים המבוקשים עבורך:
-\`\`\`json
-{
-  "type": "number",
-  "title": "סה\\"כ עובדים פעילים",
-  "value": 150
-}
-\`\`\``);
-                } else {
-                    resolve("כדי לקבל את התוצאות הטובות ביותר מהעוזר החינמי, כדאי לשאול שאלות כמו: 'הצג כמה...', 'תציג גרף...', או 'מה ההתפלגות של... (בפאי)'. המערכת תומכת בתשובות של טקסט חופשי!");
-                }
-            }, 1500);
+    const fetchGroq = async (query: string): Promise<string> => {
+        const groqMessages = [
+            { role: "system", content: SYSTEM_PROMPT },
+            ...messages.filter(m => m.id !== "welcome").map(m => ({
+                role: m.role,
+                content: m.content
+            })),
+            { role: "user", content: query }
+        ];
+
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${apiKey}`
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: groqMessages,
+                temperature: 0.7,
+            })
         });
+
+        if (!res.ok) {
+            const error = await res.json();
+            throw new Error(error.error?.message || "Failed to fetch from Groq");
+        }
+
+        const data = await res.json();
+        return data.choices[0].message.content;
     };
 
     const handleSend = async () => {
@@ -147,9 +189,7 @@ export default function AiAssistant() {
         setIsLoading(true);
 
         try {
-            // Here you would optimally connect to Ollama: http://localhost:11434/api/generate
-            // Since it requires Ollama running, we simulate it or fallback to the mock.
-            const responseText = await simulateLocalLLM(query);
+            const responseText = await fetchGroq(query);
             const parsed = parseAIContent(responseText);
 
             const aiMessage: Message = {
@@ -160,9 +200,13 @@ export default function AiAssistant() {
             };
 
             setMessages(prev => [...prev, aiMessage]);
-        } catch (error) {
+        } catch (error: any) {
             console.error(error);
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: "assistant", content: "אירעה שגיאה בחיבור למודל או לנתונים." }]);
+            setMessages(prev => [...prev, {
+                id: Date.now().toString(),
+                role: "assistant",
+                content: "אירעה שגיאה בחיבור ל-Groq API. " + (error.message || "")
+            }]);
         } finally {
             setIsLoading(false);
         }
@@ -241,14 +285,66 @@ export default function AiAssistant() {
         }
     };
 
+    if (!isKeySaved) {
+        return (
+            <MainLayout>
+                <div className="h-[calc(100vh-theme(spacing.16))] flex items-center justify-center p-4">
+                    <Card className="w-full max-w-md shadow-lg border-primary/20">
+                        <CardHeader className="text-center space-y-2">
+                            <div className="mx-auto bg-primary/10 p-3 rounded-full w-14 h-14 flex items-center justify-center mb-2">
+                                <Key className="w-7 h-7 text-primary" />
+                            </div>
+                            <CardTitle className="text-2xl">חיבור ל-Groq API</CardTitle>
+                            <CardDescription className="text-base">
+                                כדי להשתמש בעוזר ה-AI בצורה חינמית ומהירה, עליך להזין מפתח API של Groq (מודל Llama 3.3).
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-6">
+                            <div className="space-y-2">
+                                <p className="text-sm text-muted-foreground">
+                                    1. היכנס ל- <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">console.groq.com <ExternalLink className="w-3 h-3" /></a><br />
+                                    2. התחבר ויצר API Key חדש ("Create API Key")<br />
+                                    3. העתק והדבק אותו כאן (הוא יישמר רק בדפדפן שלך):
+                                </p>
+                            </div>
+
+                            <div className="space-y-4">
+                                <Input
+                                    type="password"
+                                    placeholder="gsk_..."
+                                    value={keyInput}
+                                    onChange={(e) => setKeyInput(e.target.value)}
+                                    className="h-12 text-left"
+                                    dir="ltr"
+                                />
+                                <Button
+                                    className="w-full h-12"
+                                    onClick={saveApiKey}
+                                    disabled={!keyInput.trim()}
+                                >
+                                    התחל להשתמש בעוזר
+                                </Button>
+                            </div>
+                        </CardContent>
+                    </Card>
+                </div>
+            </MainLayout>
+        );
+    }
+
     return (
         <MainLayout>
             <div className="h-[calc(100vh-theme(spacing.16))] flex flex-col p-4 max-w-4xl mx-auto w-full relative">
-                <div className="flex items-center gap-2 mb-6">
-                    <div className="bg-sidebar-primary/20 p-2 rounded-lg">
-                        <Sparkles className="w-6 h-6 text-sidebar-primary" />
+                <div className="flex items-center justify-between gap-2 mb-6">
+                    <div className="flex items-center gap-3">
+                        <div className="bg-sidebar-primary/20 p-2 rounded-lg">
+                            <Sparkles className="w-6 h-6 text-sidebar-primary" />
+                        </div>
+                        <h1 className="text-2xl font-bold">עוזר AI (Groq Llama 3.3)</h1>
                     </div>
-                    <h1 className="text-2xl font-bold">עוזר AI (חינמי)</h1>
+                    <Button variant="outline" size="sm" onClick={clearApiKey} className="text-xs">
+                        <Key className="w-3 h-3 mr-1" /> החלף מפתח
+                    </Button>
                 </div>
 
                 {/* Chat Area */}
@@ -260,16 +356,16 @@ export default function AiAssistant() {
                         >
                             <div
                                 className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${msg.role === "user"
-                                        ? "bg-slate-200 text-slate-700"
-                                        : "bg-sidebar-primary text-primary-foreground"
+                                    ? "bg-slate-200 text-slate-700"
+                                    : "bg-sidebar-primary text-primary-foreground"
                                     }`}
                             >
                                 {msg.role === "user" ? <User size={16} /> : <Bot size={16} />}
                             </div>
                             <div
                                 className={`flex-1 rounded-2xl p-4 max-w-[85%] shadow-sm ${msg.role === "user"
-                                        ? "bg-slate-100 dark:bg-slate-800 text-foreground ml-auto"
-                                        : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
+                                    ? "bg-slate-100 dark:bg-slate-800 text-foreground ml-auto"
+                                    : "bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800"
                                     }`}
                             >
                                 {msg.parsedContent ? (
@@ -289,7 +385,7 @@ export default function AiAssistant() {
                             </div>
                             <div className="bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-800 rounded-2xl p-4 shadow-sm flex items-center gap-2">
                                 <Loader2 className="w-4 h-4 animate-spin text-sidebar-primary" />
-                                <span className="text-sm text-muted-foreground">העוזר חושב...</span>
+                                <span className="text-sm text-muted-foreground">העוזר חושב (Llama 3.3)...</span>
                             </div>
                         </div>
                     )}
@@ -305,7 +401,7 @@ export default function AiAssistant() {
                         <Input
                             value={input}
                             onChange={(e) => setInput(e.target.value)}
-                            placeholder="שאל אותי על הנתונים שלך (למשל: תציג גרף פיזור, רשימת עובדים, או כמה פרויקטים יש)..."
+                            placeholder="שאל אותי על הנתונים שלך (למשל: תציג גרף פאי של התפלגות סטטוס עובדים)..."
                             className="border-0 focus-visible:ring-0 shadow-none text-base bg-transparent h-12"
                             disabled={isLoading}
                             dir="auto"
