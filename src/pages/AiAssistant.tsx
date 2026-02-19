@@ -156,9 +156,10 @@ export default function AiAssistant() {
             }
         });
 
-        if (error) {
-            console.error(error);
-            throw new Error(error.message || "Failed to fetch from Text2SQL Function");
+        if (error || (data && data.error)) {
+            const finalError = (data && data.error) ? data.error : error?.message;
+            console.error("Function Error:", finalError);
+            throw new Error(finalError || "Failed to fetch from Text2SQL Function");
         }
 
         // Structure the returned data nicely

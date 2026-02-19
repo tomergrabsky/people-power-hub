@@ -93,17 +93,21 @@ Deno.serve(async (req) => {
     }
 
     // Initialize Supabase Client to execute the query
-    const supabaseClient = createClient(
-      Deno.env.get('SUPABASE_URL') ?? '',
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '' // Need service role to bypass RLS for analytical queries
-    )
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? Deno.env.get('SUPABASE_ANON_KEY') ?? '';
+
+    if (!supabaseUrl || !supabaseKey) {
+      throw new Error("Missing Supabase environment variables in Edge Function.");
+    }
+
+    const supabaseClient = createClient(supabaseUrl, supabaseKey);
 
     // 2. Execute the generated SQL via RPC using actual DB
     const { data, error } = await supabaseClient.rpc('exec_sql', { sql_query: generatedSQL })
 
     if (error) {
       console.error("SQL Error", error);
-      throw new Error("Failed to execute DB Query");
+      throw new Error("Failed to execute DB Query: " + error.message);
     }
 
     const result = {
@@ -117,9 +121,10 @@ Deno.serve(async (req) => {
       status: 200,
     })
   } catch (error) {
-    return new Response(JSON.stringify({ error: error.message }), {
+    const errorMsg = error instanceof Error ? error.message : String(error);
+    return new Response(JSON.stringify({ error: errorMsg }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      status: 400,
+      status: 200, // Return 200 so fetch doesn't throw generic non-2xx errors
     })
   }
 })
