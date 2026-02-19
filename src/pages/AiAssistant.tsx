@@ -149,26 +149,17 @@ export default function AiAssistant() {
     };
 
     const fetchGroq = async (query: string): Promise<string> => {
-        const { data: { session } } = await supabase.auth.getSession();
-
-        const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/chat-sql`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${session?.access_token || import.meta.env.VITE_SUPABASE_ANON_KEY}`
-            },
-            body: JSON.stringify({
+        const { data, error } = await supabase.functions.invoke('chat-sql', {
+            body: {
                 query: query,
                 apiKey: apiKey
-            })
+            }
         });
 
-        if (!res.ok) {
-            const errorText = await res.text();
-            throw new Error(errorText || "Failed to fetch from Text2SQL Function");
+        if (error) {
+            console.error(error);
+            throw new Error(error.message || "Failed to fetch from Text2SQL Function");
         }
-
-        const data = await res.json();
 
         // Structure the returned data nicely
         let formattedOutput = "";
