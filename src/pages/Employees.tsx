@@ -1772,10 +1772,25 @@ export default function Employees() {
         )}
 
         <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-4">
-            <TabsTrigger value="general">כללי</TabsTrigger>
-            <TabsTrigger value="performance">ביצועים ושכר</TabsTrigger>
-            <TabsTrigger value="retention">שימור</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-3 gap-2 mb-6 bg-transparent h-auto p-0">
+            <TabsTrigger
+              value="general"
+              className="py-2.5 px-4 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:hover:bg-muted transition-all"
+            >
+              כללי
+            </TabsTrigger>
+            <TabsTrigger
+              value="performance"
+              className="py-2.5 px-4 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:hover:bg-muted transition-all"
+            >
+              ביצועים ושכר
+            </TabsTrigger>
+            <TabsTrigger
+              value="retention"
+              className="py-2.5 px-4 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:hover:bg-muted transition-all"
+            >
+              שימור
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="general" className="mt-0">
