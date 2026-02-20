@@ -290,6 +290,7 @@ export default function Employees() {
     'row_emergency_seniority',
     'row_linkedin',
     'row_revolving_door',
+    'row_unit_criticality',
     'row_unit_attrition',
     'row_attrition_reason',
     'row_leaving_reason',
@@ -1032,6 +1033,32 @@ export default function Employees() {
       ),
     },
     {
+      id: 'row_unit_criticality',
+      label: 'קריטיות ליחידה',
+      isManagerOnly: true,
+      component: (
+        <div className="space-y-2 text-right">
+          <Label htmlFor="unit_criticality">קריטיות ליחידה (0-5)</Label>
+          <Select
+            value={formData.unit_criticality}
+            onValueChange={(value) => setFormData({ ...formData, unit_criticality: value })}
+          >
+            <SelectTrigger className="text-right">
+              <SelectValue placeholder="בחר רמת קריטיות" />
+            </SelectTrigger>
+            <SelectContent dir="rtl">
+              <SelectItem value="0" className="text-right">0 - אינו חשוב לארגון</SelectItem>
+              <SelectItem value="1" className="text-right">1 - די חשוב לארגון</SelectItem>
+              <SelectItem value="2" className="text-right">2 - חשוב לארגון</SelectItem>
+              <SelectItem value="3" className="text-right">3 - חשוב מאוד לארגון</SelectItem>
+              <SelectItem value="4" className="text-right">4 - קריטי לארגון</SelectItem>
+              <SelectItem value="5" className="text-right">5 - קריטי מאוד לארגון</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ),
+    },
+    {
       id: 'row_unit_attrition',
       label: 'סיכוי לעזוב',
       isManagerOnly: true,
@@ -1150,7 +1177,7 @@ export default function Employees() {
     },
     {
       id: 'row_salary_percentage',
-      label: 'אחוז העלאת שכר וקריטיות',
+      label: 'אחוז העלאת שכר',
       isManagerOnly: true,
       component: (
         <div className="grid grid-cols-2 gap-4">
@@ -1165,26 +1192,6 @@ export default function Employees() {
               onChange={(e) => setFormData({ ...formData, salary_raise_percentage: e.target.value })}
               dir="ltr"
             />
-          </div>
-          <div className="space-y-2 text-right">
-            <Label htmlFor="unit_criticality">קריטיות ליחידה (0-5)</Label>
-            <Select
-
-              value={formData.unit_criticality}
-              onValueChange={(value) => setFormData({ ...formData, unit_criticality: value })}
-            >
-              <SelectTrigger className="text-right">
-                <SelectValue placeholder="בחר רמת קריטיות" />
-              </SelectTrigger>
-              <SelectContent dir="rtl">
-                <SelectItem value="0" className="text-right">0 - אינו חשוב לארגון</SelectItem>
-                <SelectItem value="1" className="text-right">1 - די חשוב לארגון</SelectItem>
-                <SelectItem value="2" className="text-right">2 - חשוב לארגון</SelectItem>
-                <SelectItem value="3" className="text-right">3 - חשוב מאוד לארגון</SelectItem>
-                <SelectItem value="4" className="text-right">4 - קריטי לארגון</SelectItem>
-                <SelectItem value="5" className="text-right">5 - קריטי מאוד לארגון</SelectItem>
-              </SelectContent>
-            </Select>
           </div>
         </div>
       ),
@@ -1471,6 +1478,21 @@ export default function Employees() {
       ),
     },
     {
+      id: 'row_unit_criticality',
+      label: 'קריטיות ליחידה',
+      isManagerOnly: true,
+      component: (
+        <div className="space-y-2 text-right">
+          <Label>קריטיות ליחידה (0-5)</Label>
+          <Input
+            className="text-right bg-muted"
+            value={selectedEmployee?.unit_criticality != null ? `${selectedEmployee.unit_criticality}${selectedEmployee.unit_criticality === 1 ? ' - די חשוב לארגון' : selectedEmployee.unit_criticality === 2 ? ' - חשוב לארגון' : selectedEmployee.unit_criticality === 3 ? ' - חשוב מאוד לארגון' : selectedEmployee.unit_criticality === 4 ? ' - קריטי לארגון' : selectedEmployee.unit_criticality === 5 ? ' - קריטי מאוד לארגון' : ''}` : '-'}
+            disabled
+          />
+        </div>
+      ),
+    },
+    {
       id: 'row_unit_attrition',
       label: 'סיכוי לעזוב',
       isManagerOnly: true,
@@ -1560,7 +1582,7 @@ export default function Employees() {
     },
     {
       id: 'row_salary_percentage',
-      label: 'אחוז העלאת שכר וקריטיות',
+      label: 'אחוז העלאת שכר',
       isManagerOnly: true,
       component: (
         <div className="grid grid-cols-2 gap-4">
@@ -1571,14 +1593,6 @@ export default function Employees() {
               value={selectedEmployee?.salary_raise_percentage ? `${selectedEmployee.salary_raise_percentage}%` : '-'}
               disabled
               dir="ltr"
-            />
-          </div>
-          <div className="space-y-2 text-right">
-            <Label>קריטיות ליחידה (0-5)</Label>
-            <Input
-              className="text-right bg-muted"
-              value={selectedEmployee?.unit_criticality != null ? `${selectedEmployee.unit_criticality}${selectedEmployee.unit_criticality === 1 ? ' - די חשוב לארגון' : selectedEmployee.unit_criticality === 2 ? ' - חשוב לארגון' : selectedEmployee.unit_criticality === 3 ? ' - חשוב מאוד לארגון' : selectedEmployee.unit_criticality === 4 ? ' - קריטי לארגון' : selectedEmployee.unit_criticality === 5 ? ' - קריטי מאוד לארגון' : ''}` : '-'}
-              disabled
             />
           </div>
         </div>
