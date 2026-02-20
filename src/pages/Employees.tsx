@@ -299,10 +299,11 @@ export default function Employees() {
     'row_linkedin',
     'row_revolving_door',
     'row_unit_criticality',
-    'row_unit_attrition',
+    'row_attrition_risk_unit',
     'row_leaving_reason',
     'row_attrition_reason',
     'row_retention_plan',
+    'row_attrition_risk_company',
     'row_company_retention_plan',
     'row_cost',
     'row_salary_estimates',
@@ -1073,49 +1074,54 @@ export default function Employees() {
       ),
     },
     {
-      id: 'row_unit_attrition',
-      label: 'סיכוי לעזוב',
+      id: 'row_attrition_risk_company',
+      label: 'סיכוי לעזוב - לדעת החברה',
       isManagerOnly: true,
       component: (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2 text-right">
-            <Label htmlFor="company_attrition_risk">סיכוי לעזוב - לדעת החברה (0-5)</Label>
-            <Select
-              value={formData.company_attrition_risk}
-              onValueChange={(value) => setFormData({ ...formData, company_attrition_risk: value })}
-            >
-              <SelectTrigger className="text-right">
-                <SelectValue placeholder="בחר רמת סיכוי" />
-              </SelectTrigger>
-              <SelectContent dir="rtl">
-                <SelectItem value="0" className="text-right">0 - בטוח נשאר</SelectItem>
-                <SelectItem value="1" className="text-right">1 - סיכוי קטן מאוד לעזיבה</SelectItem>
-                <SelectItem value="2" className="text-right">2 - סיכוי קטן לעזיבה</SelectItem>
-                <SelectItem value="3" className="text-right">3 - סיכוי סביר לעזיבה</SelectItem>
-                <SelectItem value="4" className="text-right">4 - סיכוי גבוה לעזיבה</SelectItem>
-                <SelectItem value="5" className="text-right">5 - בטוח יעזוב</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2 text-right">
-            <Label htmlFor="attrition_risk">סיכוי לעזוב - לדעת היחידה (0-5)</Label>
-            <Select
-              value={formData.attrition_risk}
-              onValueChange={(value) => setFormData({ ...formData, attrition_risk: value })}
-            >
-              <SelectTrigger className="text-right">
-                <SelectValue placeholder="בחר רמת סיכוי" />
-              </SelectTrigger>
-              <SelectContent dir="rtl">
-                <SelectItem value="0" className="text-right">0 - בטוח נשאר</SelectItem>
-                <SelectItem value="1" className="text-right">1 - סיכוי קטן מאוד לעזיבה</SelectItem>
-                <SelectItem value="2" className="text-right">2 - סיכוי קטן לעזיבה</SelectItem>
-                <SelectItem value="3" className="text-right">3 - סיכוי סביר לעזיבה</SelectItem>
-                <SelectItem value="4" className="text-right">4 - סיכוי גבוה לעזיבה</SelectItem>
-                <SelectItem value="5" className="text-right">5 - בטוח יעזוב</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-2 text-right">
+          <Label htmlFor="company_attrition_risk">סיכוי לעזוב - לדעת החברה (0-5)</Label>
+          <Select
+            value={formData.company_attrition_risk}
+            onValueChange={(value) => setFormData({ ...formData, company_attrition_risk: value })}
+          >
+            <SelectTrigger className="text-right">
+              <SelectValue placeholder="בחר רמת סיכוי" />
+            </SelectTrigger>
+            <SelectContent dir="rtl">
+              <SelectItem value="0" className="text-right">0 - בטוח נשאר</SelectItem>
+              <SelectItem value="1" className="text-right">1 - סיכוי קטן מאוד לעזיבה</SelectItem>
+              <SelectItem value="2" className="text-right">2 - סיכוי קטן לעזיבה</SelectItem>
+              <SelectItem value="3" className="text-right">3 - סיכוי סביר לעזיבה</SelectItem>
+              <SelectItem value="4" className="text-right">4 - סיכוי גבוה לעזיבה</SelectItem>
+              <SelectItem value="5" className="text-right">5 - בטוח יעזוב</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ),
+    },
+    {
+      id: 'row_attrition_risk_unit',
+      label: 'סיכוי לעזוב - לדעת היחידה',
+      isManagerOnly: true,
+      component: (
+        <div className="space-y-2 text-right">
+          <Label htmlFor="attrition_risk">סיכוי לעזוב - לדעת היחידה (0-5)</Label>
+          <Select
+            value={formData.attrition_risk}
+            onValueChange={(value) => setFormData({ ...formData, attrition_risk: value })}
+          >
+            <SelectTrigger className="text-right">
+              <SelectValue placeholder="בחר רמת סיכוי" />
+            </SelectTrigger>
+            <SelectContent dir="rtl">
+              <SelectItem value="0" className="text-right">0 - בטוח נשאר</SelectItem>
+              <SelectItem value="1" className="text-right">1 - סיכוי קטן מאוד לעזיבה</SelectItem>
+              <SelectItem value="2" className="text-right">2 - סיכוי קטן לעזיבה</SelectItem>
+              <SelectItem value="3" className="text-right">3 - סיכוי סביר לעזיבה</SelectItem>
+              <SelectItem value="4" className="text-right">4 - סיכוי גבוה לעזיבה</SelectItem>
+              <SelectItem value="5" className="text-right">5 - בטוח יעזוב</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       ),
     },
@@ -1502,27 +1508,32 @@ export default function Employees() {
       ),
     },
     {
-      id: 'row_unit_attrition',
-      label: 'סיכוי לעזוב',
+      id: 'row_attrition_risk_company',
+      label: 'סיכוי לעזוב - לדעת החברה',
       isManagerOnly: true,
       component: (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2 text-right">
-            <Label>סיכוי לעזוב - לדעת החברה (0-5)</Label>
-            <Input
-              className="text-right bg-muted"
-              value={selectedEmployee?.company_attrition_risk?.toString() ?? '-'}
-              disabled
-            />
-          </div>
-          <div className="space-y-2 text-right">
-            <Label>סיכוי לעזוב - לדעת היחידה (0-5)</Label>
-            <Input
-              className="text-right bg-muted"
-              value={selectedEmployee?.attrition_risk?.toString() ?? '-'}
-              disabled
-            />
-          </div>
+        <div className="space-y-2 text-right">
+          <Label>סיכוי לעזוב - לדעת החברה (0-5)</Label>
+          <Input
+            className="text-right bg-muted"
+            value={selectedEmployee?.company_attrition_risk?.toString() ?? '-'}
+            disabled
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'row_attrition_risk_unit',
+      label: 'סיכוי לעזוב - לדעת היחידה',
+      isManagerOnly: true,
+      component: (
+        <div className="space-y-2 text-right">
+          <Label>סיכוי לעזוב - לדעת היחידה (0-5)</Label>
+          <Input
+            className="text-right bg-muted"
+            value={selectedEmployee?.attrition_risk?.toString() ?? '-'}
+            disabled
+          />
         </div>
       ),
     },
@@ -1716,14 +1727,20 @@ export default function Employees() {
       'row_salary_percentage_date'
     ];
 
-    const retentionRows = [
+    const retentionCommandersRows = [
       'row_unit_criticality',
-      'row_unit_attrition',
-      'row_attrition_reason',
+      'row_attrition_risk_unit',
       'row_leaving_reason',
-      'row_retention_plan',
+      'row_attrition_reason',
+      'row_retention_plan'
+    ];
+
+    const retentionCompanyRows = [
+      'row_attrition_risk_company',
       'row_company_retention_plan'
     ];
+
+    const retentionRows = [...retentionCommandersRows, ...retentionCompanyRows];
 
     // Any fields not explicitly in these groups go to General
     const allAssignedRows = [...generalRows, ...performanceRows, ...retentionRows];
@@ -1829,18 +1846,43 @@ export default function Employees() {
 
           <TabsContent value="retention" className="mt-0">
             {activeTab === 'retention' && (
-              <DraggableFormContainer
-                fields={fields.filter(f => retentionRows.includes(f.id))}
-                fieldOrder={fieldOrder}
-                onOrderChange={handleSubOrderChange}
-                onReset={resetOrder}
-                isDragMode={isDragMode && !disabled}
-                onToggleDragMode={() => setIsDragMode(!isDragMode)}
-                isManager={isManager}
-                isSuperAdmin={isSuperAdmin}
-                disabled={disabled}
-                hideControls={true}
-              />
+              <div className="space-y-6">
+                <div className="space-y-4">
+                  <div className="bg-muted/50 p-2 rounded-md">
+                    <h3 className="text-sm font-semibold text-right">נתונים ממפקדים</h3>
+                  </div>
+                  <DraggableFormContainer
+                    fields={fields.filter(f => retentionCommandersRows.includes(f.id))}
+                    fieldOrder={fieldOrder}
+                    onOrderChange={handleSubOrderChange}
+                    onReset={resetOrder}
+                    isDragMode={isDragMode && !disabled}
+                    onToggleDragMode={() => setIsDragMode(!isDragMode)}
+                    isManager={isManager}
+                    isSuperAdmin={isSuperAdmin}
+                    disabled={disabled}
+                    hideControls={true}
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <div className="bg-muted/50 p-2 rounded-md">
+                    <h3 className="text-sm font-semibold text-right">נתונים מהחברה</h3>
+                  </div>
+                  <DraggableFormContainer
+                    fields={fields.filter(f => retentionCompanyRows.includes(f.id))}
+                    fieldOrder={fieldOrder}
+                    onOrderChange={handleSubOrderChange}
+                    onReset={resetOrder}
+                    isDragMode={isDragMode && !disabled}
+                    onToggleDragMode={() => setIsDragMode(!isDragMode)}
+                    isManager={isManager}
+                    isSuperAdmin={isSuperAdmin}
+                    disabled={disabled}
+                    hideControls={true}
+                  />
+                </div>
+              </div>
             )}
           </TabsContent>
         </Tabs>
