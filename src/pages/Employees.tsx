@@ -305,8 +305,8 @@ export default function Employees() {
     'row_retention_plan',
     'row_company_retention_plan',
     'row_cost',
-    'row_salary_percentage_date',
     'row_salary_estimates',
+    'row_salary_percentage_date',
   ], []);
 
   const { fieldOrder, updateOrder, resetOrder, isLoading: isFieldOrderLoading } = useFormFieldOrder('employee_form', defaultFieldOrder);
