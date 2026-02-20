@@ -40,6 +40,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
 import { Search, Plus, Pencil, Trash2, Filter, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Eye, Download, GripVertical, RotateCcw, Move } from 'lucide-react';
 import { toast } from 'sonner';
@@ -287,7 +293,8 @@ export default function Employees() {
     'row_company_experience',
     'row_city_startdate',
     'row_birthdate_phone',
-    'row_emergency_seniority',
+    'row_emergency_phone',
+    'row_seniority',
     'row_linkedin',
     'row_revolving_door',
     'row_unit_criticality',
@@ -297,8 +304,7 @@ export default function Employees() {
     'row_retention_plan',
     'row_company_retention_plan',
     'row_cost',
-    'row_salarydate_criticality',
-    'row_salary_percentage',
+    'row_salary_percentage_date',
     'row_salary_estimates',
   ], []);
 
@@ -978,36 +984,40 @@ export default function Employees() {
       ),
     },
     {
-      id: 'row_emergency_seniority',
-      label: 'טלפון חירום וסניוריטי',
+      id: 'row_emergency_phone',
+      label: 'טלפון חירום',
       component: (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2 text-right">
-            <Label htmlFor="emergency_phone">טלפון חירום</Label>
-            <Input
-              id="emergency_phone"
-              type="tel"
-              value={formData.emergency_phone}
-              onChange={(e) => setFormData({ ...formData, emergency_phone: e.target.value })}
-              dir="ltr"
-            />
-          </div>
-          <div className="space-y-2 text-right">
-            <Label htmlFor="seniority_level_id">סניוריטי</Label>
-            <Select
-              value={formData.seniority_level_id}
-              onValueChange={(value) => setFormData({ ...formData, seniority_level_id: value })}
-            >
-              <SelectTrigger className="text-right">
-                <SelectValue placeholder="בחר רמת ותק" />
-              </SelectTrigger>
-              <SelectContent>
-                {seniorityLevels.map((level) => (
-                  <SelectItem key={level.id} value={level.id} className="text-right">{level.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="space-y-2 text-right">
+          <Label htmlFor="emergency_phone">טלפון חירום</Label>
+          <Input
+            id="emergency_phone"
+            type="tel"
+            value={formData.emergency_phone}
+            onChange={(e) => setFormData({ ...formData, emergency_phone: e.target.value })}
+            dir="ltr"
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'row_seniority',
+      label: 'סניוריטי',
+      component: (
+        <div className="space-y-2 text-right">
+          <Label htmlFor="seniority_level_id">סניוריטי</Label>
+          <Select
+            value={formData.seniority_level_id}
+            onValueChange={(value) => setFormData({ ...formData, seniority_level_id: value })}
+          >
+            <SelectTrigger className="text-right">
+              <SelectValue placeholder="בחר רמת ותק" />
+            </SelectTrigger>
+            <SelectContent>
+              {seniorityLevels.map((level) => (
+                <SelectItem key={level.id} value={level.id} className="text-right">{level.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       ),
     },
@@ -1157,8 +1167,8 @@ export default function Employees() {
       ),
     },
     {
-      id: 'row_salarydate_criticality',
-      label: 'תאריך העלאת שכר',
+      id: 'row_salary_percentage_date',
+      label: 'תאריך ואחוז העלאת שכר',
       isManagerOnly: true,
       component: (
         <div className="grid grid-cols-2 gap-4">
@@ -1172,15 +1182,6 @@ export default function Employees() {
               dir="ltr"
             />
           </div>
-        </div>
-      ),
-    },
-    {
-      id: 'row_salary_percentage',
-      label: 'אחוז העלאת שכר',
-      isManagerOnly: true,
-      component: (
-        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2 text-right">
             <Label htmlFor="salary_raise_percentage">אחוז העלאת שכר (%)</Label>
             <Input
@@ -1436,26 +1437,30 @@ export default function Employees() {
       ),
     },
     {
-      id: 'row_emergency_seniority',
-      label: 'טלפון חירום וסניוריטי',
+      id: 'row_emergency_phone',
+      label: 'טלפון חירום',
       component: (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2 text-right">
-            <Label>טלפון חירום</Label>
-            <Input
-              className="text-right bg-muted"
-              value={selectedEmployee?.emergency_phone || '-'}
-              disabled
-            />
-          </div>
-          <div className="space-y-2 text-right">
-            <Label>סניוריטי</Label>
-            <Input
-              className="text-right bg-muted"
-              value={getSeniorityLevelName(selectedEmployee?.seniority_level_id)}
-              disabled
-            />
-          </div>
+        <div className="space-y-2 text-right">
+          <Label>טלפון חירום</Label>
+          <Input
+            className="text-right bg-muted"
+            value={selectedEmployee?.emergency_phone || '-'}
+            disabled
+          />
+        </div>
+      ),
+    },
+    {
+      id: 'row_seniority',
+      label: 'סניוריטי',
+      component: (
+        <div className="space-y-2 text-right">
+          <Label>סניוריטי</Label>
+          <Input
+            className="text-right bg-muted"
+            value={getSeniorityLevelName(selectedEmployee?.seniority_level_id)}
+            disabled
+          />
         </div>
       ),
     },
@@ -1563,8 +1568,8 @@ export default function Employees() {
       ),
     },
     {
-      id: 'row_salarydate_criticality',
-      label: 'תאריך העלאת שכר',
+      id: 'row_salary_percentage_date',
+      label: 'תאריך ואחוז העלאת שכר',
       isManagerOnly: true,
       component: (
         <div className="grid grid-cols-2 gap-4">
@@ -1577,15 +1582,6 @@ export default function Employees() {
               dir="ltr"
             />
           </div>
-        </div>
-      ),
-    },
-    {
-      id: 'row_salary_percentage',
-      label: 'אחוז העלאת שכר',
-      isManagerOnly: true,
-      component: (
-        <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2 text-right">
             <Label>אחוז העלאת שכר (%)</Label>
             <Input
@@ -1695,19 +1691,122 @@ export default function Employees() {
     },
   ], [selectedEmployee, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, isManager]);
 
-  const renderFormFields = (disabled = false) => (
-    <DraggableFormContainer
-      fields={disabled ? viewFormFields : formFields}
-      fieldOrder={fieldOrder}
-      onOrderChange={updateOrder}
-      onReset={resetOrder}
-      isDragMode={!disabled && isDragMode}
-      onToggleDragMode={() => setIsDragMode(!isDragMode)}
-      isManager={isManager}
-      isSuperAdmin={isSuperAdmin}
-      disabled={disabled}
-    />
-  );
+  const renderFormFields = (disabled = false) => {
+    const fields = disabled ? viewFormFields : formFields;
+
+    const generalRows = [
+      'row_fullname_jobrole',
+      'row_project_branch',
+      'row_company_experience',
+      'row_city_startdate',
+      'row_birthdate_phone',
+      'row_emergency_phone'
+    ];
+
+    const performanceRows = [
+      'row_seniority',
+      'row_linkedin',
+      'row_revolving_door',
+      'row_cost',
+      'row_salary_estimates',
+      'row_salary_percentage_date'
+    ];
+
+    const retentionRows = [
+      'row_unit_criticality',
+      'row_unit_attrition',
+      'row_attrition_reason',
+      'row_leaving_reason',
+      'row_retention_plan',
+      'row_company_retention_plan'
+    ];
+
+    // Any fields not explicitly in these groups go to General
+    const allAssignedRows = [...generalRows, ...performanceRows, ...retentionRows];
+    const remainingRows = fieldOrder.filter(id => !allAssignedRows.includes(id));
+    const effectiveGeneralRows = [...generalRows, ...remainingRows];
+
+    return (
+      <div className="space-y-4">
+        {!disabled && (
+          <div className="flex items-center justify-between border-b pb-2 mb-4">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={resetOrder}
+              className="text-muted-foreground hover:text-foreground"
+            >
+              <RotateCcw className="h-4 w-4 ml-1" />
+              איפוס סדר שדות
+            </Button>
+            <Button
+              type="button"
+              variant={isDragMode ? "default" : "outline"}
+              size="sm"
+              onClick={() => setIsDragMode(!isDragMode)}
+            >
+              <Move className="h-4 w-4 ml-1" />
+              {isDragMode ? 'סיום עריכה' : 'שינוי סדר שדות'}
+            </Button>
+          </div>
+        )}
+
+        <Tabs defaultValue="general" dir="rtl" className="w-full">
+          <TabsList className="grid w-full grid-cols-3 mb-4">
+            <TabsTrigger value="general">כללי</TabsTrigger>
+            <TabsTrigger value="performance">ביצועים ושכר</TabsTrigger>
+            <TabsTrigger value="retention">שימור</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="general" className="mt-0">
+            <DraggableFormContainer
+              fields={fields.filter(f => effectiveGeneralRows.includes(f.id))}
+              fieldOrder={fieldOrder}
+              onOrderChange={updateOrder}
+              onReset={resetOrder}
+              isDragMode={isDragMode && !disabled}
+              onToggleDragMode={() => setIsDragMode(!isDragMode)}
+              isManager={isManager}
+              isSuperAdmin={isSuperAdmin}
+              disabled={disabled}
+              hideControls={true}
+            />
+          </TabsContent>
+
+          <TabsContent value="performance" className="mt-0">
+            <DraggableFormContainer
+              fields={fields.filter(f => performanceRows.includes(f.id))}
+              fieldOrder={fieldOrder}
+              onOrderChange={updateOrder}
+              onReset={resetOrder}
+              isDragMode={isDragMode && !disabled}
+              onToggleDragMode={() => setIsDragMode(!isDragMode)}
+              isManager={isManager}
+              isSuperAdmin={isSuperAdmin}
+              disabled={disabled}
+              hideControls={true}
+            />
+          </TabsContent>
+
+          <TabsContent value="retention" className="mt-0">
+            <DraggableFormContainer
+              fields={fields.filter(f => retentionRows.includes(f.id))}
+              fieldOrder={fieldOrder}
+              onOrderChange={updateOrder}
+              onReset={resetOrder}
+              isDragMode={isDragMode && !disabled}
+              onToggleDragMode={() => setIsDragMode(!isDragMode)}
+              isManager={isManager}
+              isSuperAdmin={isSuperAdmin}
+              disabled={disabled}
+              hideControls={true}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+    );
+  };
 
   if (loading) {
     return (

@@ -36,6 +36,7 @@ interface DraggableFormContainerProps {
   isManager: boolean;
   isSuperAdmin?: boolean;
   disabled?: boolean;
+  hideControls?: boolean;
 }
 
 export function DraggableFormContainer({
@@ -48,6 +49,7 @@ export function DraggableFormContainer({
   isManager,
   isSuperAdmin = false,
   disabled = false,
+  hideControls = false,
 }: DraggableFormContainerProps) {
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -73,7 +75,7 @@ export function DraggableFormContainer({
   const sortedFields = useMemo(() => {
     const fieldMap = new Map(visibleFields.map(f => [f.id, f]));
     const ordered: FormFieldConfig[] = [];
-    
+
     // Add fields in saved order
     fieldOrder.forEach(id => {
       const field = fieldMap.get(id);
@@ -82,10 +84,10 @@ export function DraggableFormContainer({
         fieldMap.delete(id);
       }
     });
-    
+
     // Add any remaining fields (new fields not in saved order)
     fieldMap.forEach(field => ordered.push(field));
-    
+
     return ordered;
   }, [visibleFields, fieldOrder]);
 
@@ -95,7 +97,7 @@ export function DraggableFormContainer({
     if (over && active.id !== over.id) {
       const oldIndex = sortedFields.findIndex(f => f.id === active.id);
       const newIndex = sortedFields.findIndex(f => f.id === over.id);
-      
+
       const newSortedFields = arrayMove(sortedFields, oldIndex, newIndex);
       onOrderChange(newSortedFields.map(f => f.id));
     }
@@ -103,7 +105,7 @@ export function DraggableFormContainer({
 
   return (
     <div className="space-y-4">
-      {!disabled && (
+      {!disabled && !hideControls && (
         <div className="flex items-center justify-between border-b pb-2 mb-4">
           <Button
             type="button"
