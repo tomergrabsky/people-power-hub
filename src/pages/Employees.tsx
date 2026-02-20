@@ -285,6 +285,7 @@ export default function Employees() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [isDragMode, setIsDragMode] = useState(false);
+  const [activeTab, setActiveTab] = useState('general');
 
   // Default field order for the form
   const defaultFieldOrder = useMemo(() => [
@@ -543,6 +544,7 @@ export default function Employees() {
       company_retention_plan: '',
       company_attrition_risk: '',
     });
+    setActiveTab('general');
   };
 
   const handleAdd = async () => {
@@ -701,11 +703,13 @@ export default function Employees() {
       company_attrition_risk: employee.company_attrition_risk?.toString() || '',
     });
     setIsEditDialogOpen(true);
+    setActiveTab('general');
   };
 
   const openViewDialog = (employee: Employee) => {
     setSelectedEmployee(employee);
     setIsViewDialogOpen(true);
+    setActiveTab('general');
   };
 
   const clearFilters = () => {
@@ -1726,6 +1730,21 @@ export default function Employees() {
     const remainingRows = fieldOrder.filter(id => !allAssignedRows.includes(id));
     const effectiveGeneralRows = [...generalRows, ...remainingRows];
 
+    const handleSubOrderChange = (newSubOrder: string[]) => {
+      const subOrderSet = new Set(newSubOrder);
+      const newFullOrder = [...fieldOrder];
+      const indices: number[] = [];
+      newFullOrder.forEach((id, index) => {
+        if (subOrderSet.has(id)) {
+          indices.push(index);
+        }
+      });
+      indices.forEach((index, i) => {
+        newFullOrder[index] = newSubOrder[i];
+      });
+      updateOrder(newFullOrder);
+    };
+
     return (
       <div className="space-y-4">
         {!disabled && (
@@ -1752,7 +1771,7 @@ export default function Employees() {
           </div>
         )}
 
-        <Tabs defaultValue="general" dir="rtl" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
           <TabsList className="grid w-full grid-cols-3 mb-4">
             <TabsTrigger value="general">כללי</TabsTrigger>
             <TabsTrigger value="performance">ביצועים ושכר</TabsTrigger>
@@ -1760,48 +1779,54 @@ export default function Employees() {
           </TabsList>
 
           <TabsContent value="general" className="mt-0">
-            <DraggableFormContainer
-              fields={fields.filter(f => effectiveGeneralRows.includes(f.id))}
-              fieldOrder={fieldOrder}
-              onOrderChange={updateOrder}
-              onReset={resetOrder}
-              isDragMode={isDragMode && !disabled}
-              onToggleDragMode={() => setIsDragMode(!isDragMode)}
-              isManager={isManager}
-              isSuperAdmin={isSuperAdmin}
-              disabled={disabled}
-              hideControls={true}
-            />
+            {activeTab === 'general' && (
+              <DraggableFormContainer
+                fields={fields.filter(f => effectiveGeneralRows.includes(f.id))}
+                fieldOrder={fieldOrder}
+                onOrderChange={handleSubOrderChange}
+                onReset={resetOrder}
+                isDragMode={isDragMode && !disabled}
+                onToggleDragMode={() => setIsDragMode(!isDragMode)}
+                isManager={isManager}
+                isSuperAdmin={isSuperAdmin}
+                disabled={disabled}
+                hideControls={true}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="performance" className="mt-0">
-            <DraggableFormContainer
-              fields={fields.filter(f => performanceRows.includes(f.id))}
-              fieldOrder={fieldOrder}
-              onOrderChange={updateOrder}
-              onReset={resetOrder}
-              isDragMode={isDragMode && !disabled}
-              onToggleDragMode={() => setIsDragMode(!isDragMode)}
-              isManager={isManager}
-              isSuperAdmin={isSuperAdmin}
-              disabled={disabled}
-              hideControls={true}
-            />
+            {activeTab === 'performance' && (
+              <DraggableFormContainer
+                fields={fields.filter(f => performanceRows.includes(f.id))}
+                fieldOrder={fieldOrder}
+                onOrderChange={handleSubOrderChange}
+                onReset={resetOrder}
+                isDragMode={isDragMode && !disabled}
+                onToggleDragMode={() => setIsDragMode(!isDragMode)}
+                isManager={isManager}
+                isSuperAdmin={isSuperAdmin}
+                disabled={disabled}
+                hideControls={true}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="retention" className="mt-0">
-            <DraggableFormContainer
-              fields={fields.filter(f => retentionRows.includes(f.id))}
-              fieldOrder={fieldOrder}
-              onOrderChange={updateOrder}
-              onReset={resetOrder}
-              isDragMode={isDragMode && !disabled}
-              onToggleDragMode={() => setIsDragMode(!isDragMode)}
-              isManager={isManager}
-              isSuperAdmin={isSuperAdmin}
-              disabled={disabled}
-              hideControls={true}
-            />
+            {activeTab === 'retention' && (
+              <DraggableFormContainer
+                fields={fields.filter(f => retentionRows.includes(f.id))}
+                fieldOrder={fieldOrder}
+                onOrderChange={handleSubOrderChange}
+                onReset={resetOrder}
+                isDragMode={isDragMode && !disabled}
+                onToggleDragMode={() => setIsDragMode(!isDragMode)}
+                isManager={isManager}
+                isSuperAdmin={isSuperAdmin}
+                disabled={disabled}
+                hideControls={true}
+              />
+            )}
           </TabsContent>
         </Tabs>
       </div>
