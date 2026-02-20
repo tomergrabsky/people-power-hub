@@ -51,11 +51,11 @@ const adminNavItems = [
 ];
 
 export function AppSidebar() {
-  const { state, toggleSidebar } = useSidebar();
+  const { state, toggleSidebar, isMobile } = useSidebar();
   const location = useLocation();
   const navigate = useNavigate();
   const { user, role, signOut, isSuperAdmin, isManager } = useAuth();
-  const collapsed = state === 'collapsed';
+  const collapsed = state === 'collapsed' && !isMobile;
 
   const isActive = (path: string) => location.pathname === path;
 
@@ -83,14 +83,16 @@ export function AppSidebar() {
               </div>
             </div>
           )}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleSidebar}
-            className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
-          >
-            {collapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
-          </Button>
+          {!isMobile && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={toggleSidebar}
+              className="text-sidebar-foreground/70 hover:text-sidebar-foreground hover:bg-sidebar-accent"
+            >
+              {collapsed ? <ChevronLeft className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            </Button>
+          )}
         </div>
       </SidebarHeader>
 
