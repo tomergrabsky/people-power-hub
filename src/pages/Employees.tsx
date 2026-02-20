@@ -80,6 +80,7 @@ interface Employee {
   id_number: string;
   job_role_id: string | null;
   performance_level_id?: string | null;
+  performance_update_date?: string | null;
   professional_experience_years: number;
   organization_experience_years: number;
   project_id: string | null;
@@ -195,6 +196,7 @@ export default function Employees() {
     our_sourcing: false,
     leaving_reason_id: false,
     performance_level_id: false,
+    performance_update_date: false,
     replacement_needed: false,
     created_at: false,
     updated_at: false,
@@ -227,11 +229,12 @@ export default function Employees() {
     our_sourcing: 'איתור שלנו?',
     leaving_reason_id: 'סיבת רצון לעזוב - קטגוריות',
     performance_level_id: 'ביצועי העובד',
+    performance_update_date: 'תאריך עדכון ביצועים',
     replacement_needed: 'נדרשת החלפה?',
   };
 
   // Manager-only columns
-  const managerOnlyColumns = ['cost', 'attrition_risk', 'attrition_risk_reason', 'unit_criticality', 'salary_raise_date', 'salary_raise_percentage', 'leaving_reason_id', 'performance_level_id'];
+  const managerOnlyColumns = ['cost', 'attrition_risk', 'attrition_risk_reason', 'unit_criticality', 'salary_raise_date', 'salary_raise_percentage', 'leaving_reason_id', 'performance_level_id', 'performance_update_date'];
 
   const visibleColumnsCount = Object.keys(visibleColumns).filter((key) => {
     if (!visibleColumns[key]) return false;
@@ -250,7 +253,7 @@ export default function Employees() {
     'professional_experience_years', 'organization_experience_years', 'city',
     'start_date', 'cost', 'attrition_risk', 'attrition_risk_reason',
     'unit_criticality', 'salary_raise_date', 'salary_raise_percentage',
-    'created_at', 'updated_at', 'created_by', 'our_sourcing', 'leaving_reason_id', 'performance_level_id', 'replacement_needed'
+    'created_at', 'updated_at', 'created_by', 'our_sourcing', 'leaving_reason_id', 'performance_level_id', 'performance_update_date', 'replacement_needed'
   ], []);
 
   const { columnOrder, updateOrder: updateColumnOrder, resetOrder: resetColumnOrder } = useColumnOrder('employees', defaultColumnOrder);
@@ -303,7 +306,6 @@ export default function Employees() {
     'row_fullname_jobrole',
     'row_project_branch',
     'row_company_experience',
-    'row_performance_level',
     'row_city_startdate',
     'row_birthdate_phone',
     'row_emergency_phone',
@@ -320,6 +322,7 @@ export default function Employees() {
     'row_cost',
     'row_salary_estimates',
     'row_salary_percentage_date',
+    'row_performance_combined',
   ], []);
 
   const { fieldOrder, updateOrder, resetOrder, isLoading: isFieldOrderLoading } = useFormFieldOrder('employee_form', defaultFieldOrder);
@@ -353,6 +356,7 @@ export default function Employees() {
     company_retention_plan: '',
     company_attrition_risk: '',
     performance_level_id: '',
+    performance_update_date: '',
     replacement_needed: '',
   });
 
@@ -567,6 +571,7 @@ export default function Employees() {
       company_retention_plan: '',
       company_attrition_risk: '',
       performance_level_id: '',
+      performance_update_date: '',
       replacement_needed: '',
     });
     setActiveTab('general');
@@ -601,6 +606,7 @@ export default function Employees() {
       our_sourcing: formData.our_sourcing === 'true' ? true : formData.our_sourcing === 'false' ? false : null,
       leaving_reason_id: formData.leaving_reason_id || null,
       performance_level_id: formData.performance_level_id || null,
+      performance_update_date: formData.performance_update_date || null,
     };
 
     // Manager-only fields
@@ -655,6 +661,7 @@ export default function Employees() {
       our_sourcing: formData.our_sourcing === 'true' ? true : formData.our_sourcing === 'false' ? false : null,
       leaving_reason_id: formData.leaving_reason_id || null,
       performance_level_id: formData.performance_level_id || null,
+      performance_update_date: formData.performance_update_date || null,
     };
 
     if (isManager) {
@@ -731,6 +738,7 @@ export default function Employees() {
       company_retention_plan: (employee as any).company_retention_plan || '',
       company_attrition_risk: employee.company_attrition_risk?.toString() || '',
       performance_level_id: employee.performance_level_id || '',
+      performance_update_date: employee.performance_update_date || '',
       replacement_needed: (employee as any).replacement_needed || '',
     });
     setIsEditDialogOpen(true);
@@ -1035,25 +1043,40 @@ export default function Employees() {
       ),
     },
     {
-      id: 'row_performance_level',
-      label: 'ביצועי העובד',
+      id: 'row_performance_combined',
+      label: 'ביצועים ועדכון',
       isManagerOnly: true,
       component: (
-        <div className="space-y-2 text-right">
-          <Label htmlFor="performance_level_id">ביצועי העובד</Label>
-          <Select
-            value={formData.performance_level_id || ''}
-            onValueChange={(value) => setFormData({ ...formData, performance_level_id: value })}
-          >
-            <SelectTrigger className="text-right" dir="rtl">
-              <SelectValue placeholder="בחר רמת ביצועים" />
-            </SelectTrigger>
-            <SelectContent>
-              {performanceLevels.map((level) => (
-                <SelectItem key={level.id} value={level.id} className="text-right">{level.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2 text-right">
+            <Label htmlFor="performance_level_id">ביצועי העובד</Label>
+            <Select
+              value={formData.performance_level_id || ''}
+              onValueChange={(value) => setFormData({
+                ...formData,
+                performance_level_id: value,
+                performance_update_date: new Date().toISOString().split('T')[0]
+              })}
+            >
+              <SelectTrigger className="text-right" dir="rtl">
+                <SelectValue placeholder="בחר רמת ביצועים" />
+              </SelectTrigger>
+              <SelectContent>
+                {performanceLevels.map((level) => (
+                  <SelectItem key={level.id} value={level.id} className="text-right">{level.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2 text-right">
+            <Label htmlFor="performance_update_date">תאריך עדכון ביצועים</Label>
+            <Input
+              id="performance_update_date"
+              className="text-right bg-muted"
+              value={formData.performance_update_date ? new Date(formData.performance_update_date).toLocaleDateString('he-IL') : 'טרם עודכן'}
+              disabled
+            />
+          </div>
         </div>
       ),
     },
@@ -1533,17 +1556,27 @@ export default function Employees() {
       ),
     },
     {
-      id: 'row_performance_level',
-      label: 'ביצועי העובד',
+      id: 'row_performance_combined',
+      label: 'ביצועים ועדכון',
       isManagerOnly: true,
       component: (
-        <div className="space-y-2 text-right">
-          <Label>ביצועי העובד</Label>
-          <Input
-            className="text-right bg-muted"
-            value={getPerformanceLevelName(selectedEmployee?.performance_level_id)}
-            disabled
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2 text-right">
+            <Label>ביצועי העובד</Label>
+            <Input
+              className="text-right bg-muted"
+              value={getPerformanceLevelName(selectedEmployee?.performance_level_id)}
+              disabled
+            />
+          </div>
+          <div className="space-y-2 text-right">
+            <Label>תאריך עדכון ביצועים</Label>
+            <Input
+              className="text-right bg-muted"
+              value={selectedEmployee?.performance_update_date ? new Date(selectedEmployee.performance_update_date).toLocaleDateString('he-IL') : '-'}
+              disabled
+            />
+          </div>
         </div>
       ),
     },
@@ -1817,13 +1850,13 @@ export default function Employees() {
     ];
 
     const performanceRows = [
-      'row_performance_level',
       'row_seniority',
       'row_linkedin',
       'row_revolving_door',
       'row_cost',
       'row_salary_estimates',
-      'row_salary_percentage_date'
+      'row_salary_percentage_date',
+      'row_performance_combined'
     ];
 
     const retentionCommandersRows = [
