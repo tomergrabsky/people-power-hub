@@ -8,7 +8,7 @@ import {
     BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
     PieChart, Pie, Cell, CartesianGrid, Legend
 } from "recharts";
-import { supabase } from "@/integrations/supabase/client";
+
 
 type MessageOutput =
     | { type: "text"; text: string }
@@ -149,39 +149,7 @@ export default function AiAssistant() {
     };
 
     const fetchGroq = async (query: string): Promise<string> => {
-        const { data, error } = await supabase.functions.invoke('chat-sql', {
-            body: {
-                query: query,
-                apiKey: apiKey
-            }
-        });
-
-        if (error || (data && data.error)) {
-            const finalError = (data && data.error) ? data.error : error?.message;
-            console.error("Function Error:", finalError);
-            throw new Error(finalError || "Failed to fetch from Text2SQL Function");
-        }
-
-        // Structure the returned data nicely
-        let formattedOutput = "";
-
-        if (data.data && Array.isArray(data.data)) {
-            // Count total
-            if (data.data.length === 1 && Object.keys(data.data[0]).length === 1 && typeof Object.values(data.data[0])[0] === 'number') {
-                const keyName = Object.keys(data.data[0])[0];
-                const val = data.data[0][keyName];
-                formattedOutput = `\`\`\`json\n{ "type": "number", "title": "תוצאה", "value": ${val} }\n\`\`\``;
-            } else if (data.data.length > 0) {
-                // Format as generic text table / list for now
-                const head = Object.keys(data.data[0]).join(" | ");
-                const rows = data.data.map((r: any) => Object.values(r).join(" | ")).join("\n");
-                formattedOutput = `מצאתי ${data.data.length} רשומות רלוונטיות:\n\n${head}\n${"-".repeat(head.length)}\n${rows}`;
-            } else {
-                formattedOutput = "השאילתה רצה בהצלחה אך לא החזירה נתונים.";
-            }
-        }
-
-        return `${data.message}\n\n**SQL שנוצר:**\n\`\`\`sql\n${data.generatedSQL}\n\`\`\`\n\n${formattedOutput}`;
+        return "מצטערים, יכולות ה-AI כרגע מושבתות עקב מעבר מסד הנתונים למערכת NoSQL (Firestore) שאינה תומכת בשאילתות SQL.";
     };
 
     const handleSend = async () => {

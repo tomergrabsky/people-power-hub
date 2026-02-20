@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,66 +45,62 @@ export default function SeniorityLevels() {
   }, []);
 
   const fetchSeniorityLevels = async () => {
-    const { data, error } = await supabase
-      .from('seniority_levels')
-      .select('*')
-      .order('name');
-
-    if (error) {
+    try {
+      const snap = await getDocs(collection(db, 'seniority_levels'));
+      const fetched = snap.docs.map(doc => ({
+        id: doc.id,
+        created_at: new Date().toISOString(),
+        ...doc.data()
+      })) as SeniorityLevel[];
+      setSeniorityLevels(fetched.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (e) {
+      console.error(e);
       toast.error('שגיאה בטעינת רמות ותק');
-    } else {
-      setSeniorityLevels(data || []);
     }
     setIsLoading(false);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim()) {
       toast.error('נא להזין שם רמת ותק');
       return;
     }
 
     if (editingLevel) {
-      const { error } = await supabase
-        .from('seniority_levels')
-        .update({ 
-          name: formData.name.trim(), 
-          description: formData.description.trim() || null 
-        })
-        .eq('id', editingLevel.id);
-
-      if (error) {
-        toast.error('שגיאה בעדכון רמת ותק');
-      } else {
+      try {
+        await updateDoc(doc(db, 'seniority_levels', editingLevel.id), {
+          name: formData.name.trim(),
+          description: formData.description.trim() || null
+        });
         toast.success('רמת ותק עודכנה בהצלחה');
         fetchSeniorityLevels();
         resetForm();
+      } catch (e) {
+        toast.error('שגיאה בעדכון רמת ותק');
       }
     } else {
-      const { error } = await supabase
-        .from('seniority_levels')
-        .insert([{ 
-          name: formData.name.trim(), 
-          description: formData.description.trim() || null 
-        }]);
-
-      if (error) {
-        toast.error('שגיאה ביצירת רמת ותק');
-      } else {
+      try {
+        await addDoc(collection(db, 'seniority_levels'), {
+          name: formData.name.trim(),
+          description: formData.description.trim() || null,
+          created_at: new Date().toISOString()
+        });
         toast.success('רמת ותק נוצרה בהצלחה');
         fetchSeniorityLevels();
         resetForm();
+      } catch (e) {
+        toast.error('שגיאה ביצירת רמת ותק');
       }
     }
   };
 
   const handleEdit = (level: SeniorityLevel) => {
     setEditingLevel(level);
-    setFormData({ 
-      name: level.name, 
-      description: level.description || '' 
+    setFormData({
+      name: level.name,
+      description: level.description || ''
     });
     setIsDialogOpen(true);
   };
@@ -111,16 +108,12 @@ export default function SeniorityLevels() {
   const handleDelete = async (id: string) => {
     if (!confirm('האם אתה בטוח שברצונך למחוק רמת ותק זו?')) return;
 
-    const { error } = await supabase
-      .from('seniority_levels')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      toast.error('שגיאה במחיקת רמת ותק');
-    } else {
+    try {
+      await deleteDoc(doc(db, 'seniority_levels', id));
       toast.success('רמת ותק נמחקה בהצלחה');
       fetchSeniorityLevels();
+    } catch (e) {
+      toast.error('שגיאה במחיקת רמת ותק. ייתכן שבשימוש.');
     }
   };
 

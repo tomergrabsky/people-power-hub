@@ -9,8 +9,8 @@ import { Separator } from '@/components/ui/separator';
 import { Users, Building2, Shield, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { z } from 'zod';
-import { lovable } from '@/integrations/lovable/index';
-
+import { auth } from '@/integrations/firebase/client';
+import { GoogleAuthProvider, signInWithPopup } from 'firebase/auth';
 const loginSchema = z.object({
   email: z.string().email('כתובת אימייל לא תקינה'),
   password: z.string().min(6, 'סיסמה חייבת להכיל לפחות 6 תווים'),
@@ -22,7 +22,7 @@ export default function Auth() {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const [loginEmail, setLoginEmail] = useState('');
   const [loginPassword, setLoginPassword] = useState('');
 
@@ -35,7 +35,7 @@ export default function Auth() {
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrors({});
-    
+
     try {
       loginSchema.parse({ email: loginEmail, password: loginPassword });
     } catch (err) {
@@ -67,12 +67,13 @@ export default function Auth() {
 
   const handleGoogleLogin = async () => {
     setGoogleLoading(true);
-    const { error } = await lovable.auth.signInWithOAuth("google", {
-      redirect_uri: window.location.origin,
-    });
-    
-    if (error) {
+    try {
+      const provider = new GoogleAuthProvider();
+      await signInWithPopup(auth, provider);
+      navigate('/');
+    } catch (error: any) {
       toast.error('שגיאה בהתחברות עם Google: ' + error.message);
+    } finally {
       setGoogleLoading(false);
     }
   };
@@ -164,17 +165,17 @@ export default function Auth() {
                 התחבר
               </Button>
             </form>
-            
+
             <div className="relative my-6">
               <Separator />
               <span className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 bg-card px-2 text-xs text-muted-foreground">
                 או
               </span>
             </div>
-            
-            <Button 
-              variant="outline" 
-              className="w-full" 
+
+            <Button
+              variant="outline"
+              className="w-full"
               onClick={handleGoogleLogin}
               disabled={loading || googleLoading}
             >
@@ -202,7 +203,7 @@ export default function Auth() {
               )}
               התחבר עם Google
             </Button>
-            
+
             <p className="text-center text-sm text-muted-foreground mt-6">
               לקבלת גישה למערכת, פנו למנהל המערכת
             </p>

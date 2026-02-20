@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
 
 export function useColumnOrder(tableName: string, defaultOrder: string[]) {
@@ -10,38 +11,33 @@ export function useColumnOrder(tableName: string, defaultOrder: string[]) {
   // Load saved order from database
   useEffect(() => {
     const loadOrder = async () => {
-      if (!user?.id) {
+      if (!user?.uid) {
         setColumnOrder(defaultOrder);
         setIsLoading(false);
         return;
       }
 
       try {
-        const { data, error } = await supabase
-          .from('user_form_preferences')
-          .select('field_order')
-          .eq('user_id', user.id)
-          .eq('form_name', `table_columns_${tableName}`)
-          .maybeSingle();
+        const docRef = doc(db, 'user_form_preferences', `${user.uid}_table_columns_${tableName}`);
+        const docSnap = await getDoc(docRef);
 
-        if (error) {
-          console.error('Error loading column order:', error);
+        if (!docSnap.exists()) {
           setColumnOrder(defaultOrder);
-        } else if (data?.field_order) {
+        } else if (docSnap.data()?.field_order) {
           // Merge with default order to handle new columns
-          const savedOrder = data.field_order;
+          const savedOrder = docSnap.data().field_order;
           const mergedOrder = [...savedOrder];
-          
+
           // Add any new columns that weren't in saved order
           defaultOrder.forEach(col => {
             if (!mergedOrder.includes(col)) {
               mergedOrder.push(col);
             }
           });
-          
+
           // Remove any columns that no longer exist
           const filteredOrder = mergedOrder.filter(col => defaultOrder.includes(col));
-          
+
           setColumnOrder(filteredOrder);
         } else {
           setColumnOrder(defaultOrder);
@@ -55,30 +51,23 @@ export function useColumnOrder(tableName: string, defaultOrder: string[]) {
     };
 
     loadOrder();
-  }, [user?.id, tableName, defaultOrder]);
+  }, [user?.uid, tableName, defaultOrder]);
 
   // Save order to database
   const saveOrder = useCallback(async (newOrder: string[]) => {
-    if (!user?.id) return;
+    if (!user?.uid) return;
 
     try {
-      const { error } = await supabase
-        .from('user_form_preferences')
-        .upsert({
-          user_id: user.id,
-          form_name: `table_columns_${tableName}`,
-          field_order: newOrder,
-        }, {
-          onConflict: 'user_id,form_name'
-        });
-
-      if (error) {
-        console.error('Error saving column order:', error);
-      }
+      const docRef = doc(db, 'user_form_preferences', `${user.uid}_table_columns_${tableName}`);
+      await setDoc(docRef, {
+        user_id: user.uid,
+        form_name: `table_columns_${tableName}`,
+        field_order: newOrder,
+      }, { merge: true });
     } catch (err) {
       console.error('Error saving column order:', err);
     }
-  }, [user?.id, tableName]);
+  }, [user?.uid, tableName]);
 
   const updateOrder = useCallback((newOrder: string[]) => {
     setColumnOrder(newOrder);

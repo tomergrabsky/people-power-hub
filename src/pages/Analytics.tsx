@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { collection, getDocs } from 'firebase/firestore';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -198,22 +199,24 @@ export default function Analytics() {
     setLoading(true);
 
     const [employeesRes, projectsRes, rolesRes, companiesRes, branchesRes, seniorityRes, leavingReasonsRes] = await Promise.all([
-      supabase.from('employees').select('*'),
-      supabase.from('projects').select('id, name'),
-      supabase.from('job_roles').select('id, name'),
-      supabase.from('employing_companies').select('id, name'),
-      supabase.from('branches').select('id, name'),
-      supabase.from('seniority_levels').select('id, name'),
-      supabase.from('leaving_reasons').select('id, name'),
+      getDocs(collection(db, 'employees')),
+      getDocs(collection(db, 'projects')),
+      getDocs(collection(db, 'job_roles')),
+      getDocs(collection(db, 'employing_companies')),
+      getDocs(collection(db, 'branches')),
+      getDocs(collection(db, 'seniority_levels')),
+      getDocs(collection(db, 'leaving_reasons')),
     ]);
 
-    setAllEmployees(employeesRes.data || []);
-    setProjects(projectsRes.data || []);
-    setRoles(rolesRes.data || []);
-    setCompanies(companiesRes.data || []);
-    setBranches(branchesRes.data || []);
-    setSeniorityLevels(seniorityRes.data || []);
-    setLeavingReasons(leavingReasonsRes.data || []);
+    const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+
+    setAllEmployees(mapDocs(employeesRes));
+    setProjects(mapDocs(projectsRes));
+    setRoles(mapDocs(rolesRes));
+    setCompanies(mapDocs(companiesRes));
+    setBranches(mapDocs(branchesRes));
+    setSeniorityLevels(mapDocs(seniorityRes));
+    setLeavingReasons(mapDocs(leavingReasonsRes));
     setLoading(false);
   };
 
@@ -429,7 +432,7 @@ export default function Analytics() {
     const startMonth = 0; // January
     const today = new Date();
     const months: { key: string; label: string }[] = [];
-    
+
     let currentDate = new Date(startYear, startMonth, 1);
     while (currentDate <= today) {
       const key = `${currentDate.getFullYear()}-${String(currentDate.getMonth() + 1).padStart(2, '0')}`;
@@ -443,7 +446,7 @@ export default function Analytics() {
     return months.map(({ key, label }) => {
       const [year, month] = key.split('-').map(Number);
       const endOfMonth = new Date(year, month, 0); // Last day of the month
-      
+
       const counts: Record<string, number> = {};
       seniorityLevels.forEach(level => {
         counts[level.name] = 0;
@@ -488,7 +491,7 @@ export default function Analytics() {
   // Super Admin exclusive metrics
   const superAdminMetrics = useMemo(() => {
     if (!isSuperAdmin) return null;
-    
+
     const totalCost = filteredEmployees.reduce((sum, emp) => sum + (emp.cost || 0), 0);
     const totalEstimatedSalary = filteredEmployees.reduce((sum, emp) => {
       // Estimated salary = cost / 1.4 / 1.1 / 1.18
@@ -496,22 +499,22 @@ export default function Analytics() {
       return sum + salary;
     }, 0);
     const totalRealMarketSalary = filteredEmployees.reduce((sum, emp) => sum + (emp.real_market_salary || 0), 0);
-    
+
     // Employees with revolving door flag
     const revolvingDoorCount = filteredEmployees.filter(emp => emp.revolving_door === true).length;
-    
+
     // Salary gap analysis
     const employeesWithBothSalaries = filteredEmployees.filter(
       emp => emp.cost && emp.real_market_salary
     );
     const avgSalaryGap = employeesWithBothSalaries.length > 0
       ? employeesWithBothSalaries.reduce((sum, emp) => {
-          const estimatedSalary = emp.cost! / 1.4 / 1.1 / 1.18;
-          const gap = emp.real_market_salary! - estimatedSalary;
-          return sum + gap;
-        }, 0) / employeesWithBothSalaries.length
+        const estimatedSalary = emp.cost! / 1.4 / 1.1 / 1.18;
+        const gap = emp.real_market_salary! - estimatedSalary;
+        return sum + gap;
+      }, 0) / employeesWithBothSalaries.length
       : 0;
-    
+
     return {
       totalCost,
       totalEstimatedSalary,
@@ -525,7 +528,7 @@ export default function Analytics() {
   // Salary distribution for super admin
   const salaryDistribution = useMemo(() => {
     if (!isSuperAdmin) return [];
-    
+
     const ranges = [
       { min: 0, max: 10000, label: 'עד 10K' },
       { min: 10000, max: 15000, label: '10K-15K' },
@@ -534,7 +537,7 @@ export default function Analytics() {
       { min: 25000, max: 30000, label: '25K-30K' },
       { min: 30000, max: Infinity, label: '30K+' },
     ];
-    
+
     return ranges.map(range => {
       const count = filteredEmployees.filter(emp => {
         const salary = emp.cost ? emp.cost / 1.4 / 1.1 / 1.18 : 0;
@@ -542,12 +545,12 @@ export default function Analytics() {
       }).length;
       return { name: range.label, value: count };
     }).filter(item => item.value > 0);
-   }, [filteredEmployees, isSuperAdmin]);
+  }, [filteredEmployees, isSuperAdmin]);
 
   // Get employees for selected salary distribution range
   const employeesInSelectedSalaryRange = useMemo(() => {
     if (!selectedSalaryRange) return [];
-    
+
     const ranges = [
       { min: 0, max: 10000, label: 'עד 10K' },
       { min: 10000, max: 15000, label: '10K-15K' },
@@ -556,10 +559,10 @@ export default function Analytics() {
       { min: 25000, max: 30000, label: '25K-30K' },
       { min: 30000, max: Infinity, label: '30K+' },
     ];
-    
+
     const range = ranges.find(r => r.label === selectedSalaryRange);
     if (!range) return [];
-    
+
     return filteredEmployees
       .filter(emp => {
         const salary = emp.cost ? emp.cost / 1.4 / 1.1 / 1.18 : 0;
@@ -579,13 +582,13 @@ export default function Analytics() {
   // Salary gap distribution for super admin
   const salaryGapDistribution = useMemo(() => {
     if (!isSuperAdmin) return [];
-    
+
     const employeesWithBothSalaries = filteredEmployees.filter(
       emp => emp.cost && emp.real_market_salary
     );
-    
+
     if (employeesWithBothSalaries.length === 0) return [];
-    
+
     const ranges = [
       { min: -Infinity, max: -5000, label: 'משלמים יותר מ-5K', minVal: -Infinity, maxVal: -5000 },
       { min: -5000, max: -2000, label: 'משלמים 2K-5K יותר', minVal: -5000, maxVal: -2000 },
@@ -594,15 +597,15 @@ export default function Analytics() {
       { min: 2000, max: 5000, label: 'שוק גבוה 2K-5K', minVal: 2000, maxVal: 5000 },
       { min: 5000, max: Infinity, label: 'שוק גבוה מעל 5K', minVal: 5000, maxVal: Infinity },
     ];
-    
+
     return ranges.map(range => {
       const count = employeesWithBothSalaries.filter(emp => {
         const estimatedSalary = emp.cost! / 1.4 / 1.1 / 1.18;
         const gap = emp.real_market_salary! - estimatedSalary;
         return gap >= range.min && gap < range.max;
       }).length;
-      return { 
-        name: range.label, 
+      return {
+        name: range.label,
         value: count,
         isNegative: range.max <= 0,
         minVal: range.minVal,
@@ -614,10 +617,10 @@ export default function Analytics() {
   // Get employees for selected salary gap range
   const employeesInSelectedSalaryGap = useMemo(() => {
     if (!selectedSalaryGap) return [];
-    
+
     const rangeData = salaryGapDistribution.find(d => d.name === selectedSalaryGap);
     if (!rangeData) return [];
-    
+
     return filteredEmployees
       .filter(emp => {
         if (!emp.cost || !emp.real_market_salary) return false;
@@ -653,7 +656,7 @@ export default function Analytics() {
 
   const employeesInSelectedProgram = useMemo(() => {
     if (!selectedProgram) return [];
-    
+
     return filteredEmployees
       .filter((emp) => {
         const projectName = projects.find((p) => p.id === emp.project_id)?.name || 'לא משויך';
@@ -675,7 +678,7 @@ export default function Analytics() {
   // Get employees for selected branch
   const employeesInSelectedBranch = useMemo(() => {
     if (!selectedBranch) return [];
-    
+
     return filteredEmployees
       .filter((emp) => {
         const branchName = branches.find((b) => b.id === emp.branch_id)?.name || 'לא מוגדר';
@@ -697,7 +700,7 @@ export default function Analytics() {
   // Get employees for selected seniority
   const employeesInSelectedSeniority = useMemo(() => {
     if (!selectedSeniority) return [];
-    
+
     return filteredEmployees
       .filter((emp) => {
         const seniorityName = seniorityLevels.find((s) => s.id === emp.seniority_level_id)?.name || 'לא מוגדר';
@@ -719,7 +722,7 @@ export default function Analytics() {
   // Get employees for selected city
   const employeesInSelectedCity = useMemo(() => {
     if (!selectedCity) return [];
-    
+
     return filteredEmployees
       .filter((emp) => {
         const cityName = emp.city || 'לא מוגדר';
@@ -741,7 +744,7 @@ export default function Analytics() {
   // Get employees for selected company
   const employeesInSelectedCompany = useMemo(() => {
     if (!selectedCompany) return [];
-    
+
     return filteredEmployees
       .filter((emp) => {
         const companyName = companies.find((c) => c.id === emp.employing_company_id)?.name || 'לא מוגדר';
@@ -763,7 +766,7 @@ export default function Analytics() {
   // Get employees for selected criticality
   const employeesInSelectedCriticality = useMemo(() => {
     if (selectedCriticality === null) return [];
-    
+
     return filteredEmployees
       .filter((emp) => {
         if (selectedCriticality === 'לא מוגדר') {
@@ -789,7 +792,7 @@ export default function Analytics() {
   // Get employees for selected attrition risk
   const employeesInSelectedAttritionRisk = useMemo(() => {
     if (selectedAttritionRisk === null) return [];
-    
+
     return filteredEmployees
       .filter((emp) => {
         if (selectedAttritionRisk === 'לא מוגדר') {
@@ -816,7 +819,7 @@ export default function Analytics() {
   const employeesInSelectedAttentionScore = useMemo(() => {
     if (selectedAttentionScore === null) return [];
     const targetScore = parseInt(selectedAttentionScore);
-    
+
     return filteredEmployees
       .filter((emp) => {
         const criticality = emp.unit_criticality ?? 0;
@@ -885,7 +888,7 @@ export default function Analytics() {
   // Get employees for selected leaving reason
   const employeesInSelectedLeavingReason = useMemo(() => {
     if (!selectedLeavingReason) return [];
-    
+
     return filteredEmployees
       .filter((emp) => {
         const reasonName = leavingReasons.find((r) => r.id === emp.leaving_reason_id)?.name || 'לא מוגדר';
@@ -1041,9 +1044,9 @@ export default function Analytics() {
                           ))}
                         </Pie>
                         <Tooltip content={<CustomTooltip />} />
-                        <Legend 
-                          layout="vertical" 
-                          align="left" 
+                        <Legend
+                          layout="vertical"
+                          align="left"
                           verticalAlign="middle"
                           wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right', cursor: 'pointer' }}
                           onClick={(data) => handleProgramClick(data.value)}
@@ -1077,9 +1080,9 @@ export default function Analytics() {
                           ))}
                         </Pie>
                         <Tooltip content={<CustomTooltip />} />
-                        <Legend 
-                          layout="vertical" 
-                          align="left" 
+                        <Legend
+                          layout="vertical"
+                          align="left"
                           verticalAlign="middle"
                           wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right' }}
                         />
@@ -1117,9 +1120,9 @@ export default function Analytics() {
                           ))}
                         </Pie>
                         <Tooltip content={<CustomTooltip />} />
-                        <Legend 
-                          layout="vertical" 
-                          align="left" 
+                        <Legend
+                          layout="vertical"
+                          align="left"
                           verticalAlign="middle"
                           wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right', cursor: 'pointer' }}
                           onClick={(data) => handleBranchClick(data.value)}
@@ -1155,9 +1158,9 @@ export default function Analytics() {
                           ))}
                         </Pie>
                         <Tooltip content={<CustomTooltip />} />
-                        <Legend 
-                          layout="vertical" 
-                          align="left" 
+                        <Legend
+                          layout="vertical"
+                          align="left"
                           verticalAlign="middle"
                           wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right', cursor: 'pointer' }}
                           onClick={(data) => handleSeniorityClick(data.value)}
@@ -1209,7 +1212,7 @@ export default function Analytics() {
                       <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                       <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                       <Tooltip />
-                      <Legend 
+                      <Legend
                         wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
                       />
                       {seniorityLevels.map((level, index) => (
@@ -1245,17 +1248,17 @@ export default function Analytics() {
                   <CardTitle>התפלגות עובדים לפי עיר (10 הגדולות)</CardTitle>
                 </CardHeader>
                 <CardContent>
-                <div className="h-80">
+                  <div className="h-80">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={employeesByCity}>
                         <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                         <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                         <Tooltip content={<CustomTooltip />} />
-                        <Bar 
-                          dataKey="value" 
-                          fill="hsl(var(--accent))" 
-                          radius={[4, 4, 0, 0]} 
+                        <Bar
+                          dataKey="value"
+                          fill="hsl(var(--accent))"
+                          radius={[4, 4, 0, 0]}
                           onClick={(data) => handleCityClick(data.name)}
                           style={{ cursor: 'pointer' }}
                         />
@@ -1277,10 +1280,10 @@ export default function Analytics() {
                         <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                         <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
                         <Tooltip content={<CustomTooltip />} />
-                        <Bar 
-                          dataKey="value" 
-                          fill="hsl(var(--primary))" 
-                          radius={[4, 4, 0, 0]} 
+                        <Bar
+                          dataKey="value"
+                          fill="hsl(var(--primary))"
+                          radius={[4, 4, 0, 0]}
                           onClick={(data) => handleCompanyClick(data.name)}
                           style={{ cursor: 'pointer' }}
                         />
@@ -1297,7 +1300,7 @@ export default function Analytics() {
                 <CardTitle>ממוצע ותק מקצועי לפי תפקיד (שנים)</CardTitle>
               </CardHeader>
               <CardContent>
-              <div className="h-80">
+                <div className="h-80">
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={avgExperienceByRole}>
                       <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
@@ -1422,10 +1425,10 @@ export default function Analytics() {
                                 return null;
                               }}
                             />
-                            <Bar 
-                              dataKey="value" 
-                              fill="hsl(var(--accent))" 
-                              radius={[4, 4, 0, 0]} 
+                            <Bar
+                              dataKey="value"
+                              fill="hsl(var(--accent))"
+                              radius={[4, 4, 0, 0]}
                               onClick={(data) => handleCriticalityClick(data.name)}
                               style={{ cursor: 'pointer' }}
                             />
@@ -1461,10 +1464,10 @@ export default function Analytics() {
                                 return null;
                               }}
                             />
-                            <Bar 
-                              dataKey="value" 
-                              fill="hsl(var(--destructive))" 
-                              radius={[4, 4, 0, 0]} 
+                            <Bar
+                              dataKey="value"
+                              fill="hsl(var(--destructive))"
+                              radius={[4, 4, 0, 0]}
                               onClick={(data) => handleAttritionRiskClick(data.name)}
                               style={{ cursor: 'pointer' }}
                             />
@@ -1503,10 +1506,10 @@ export default function Analytics() {
                             return null;
                           }}
                         />
-                        <Bar 
-                          dataKey="value" 
-                          fill="hsl(var(--warning))" 
-                          radius={[4, 4, 0, 0]} 
+                        <Bar
+                          dataKey="value"
+                          fill="hsl(var(--warning))"
+                          radius={[4, 4, 0, 0]}
                           onClick={(data) => handleAttentionScoreClick(data.name)}
                           style={{ cursor: 'pointer' }}
                         />
@@ -1543,10 +1546,10 @@ export default function Analytics() {
                             return null;
                           }}
                         />
-                        <Bar 
-                          dataKey="value" 
-                          fill="hsl(330, 70%, 50%)" 
-                          radius={[4, 4, 0, 0]} 
+                        <Bar
+                          dataKey="value"
+                          fill="hsl(330, 70%, 50%)"
+                          radius={[4, 4, 0, 0]}
                           onClick={(data) => handleLeavingReasonClick(data.name)}
                           style={{ cursor: 'pointer' }}
                         />
@@ -1667,10 +1670,10 @@ export default function Analytics() {
                           return null;
                         }}
                       />
-                      <Bar 
-                        dataKey="value" 
-                        fill="hsl(var(--destructive))" 
-                        radius={[4, 4, 0, 0]} 
+                      <Bar
+                        dataKey="value"
+                        fill="hsl(var(--destructive))"
+                        radius={[4, 4, 0, 0]}
                         cursor="pointer"
                         onClick={(data) => {
                           if (data && data.name) {
@@ -1715,8 +1718,8 @@ export default function Analytics() {
                           return null;
                         }}
                       />
-                      <Bar 
-                        dataKey="value" 
+                      <Bar
+                        dataKey="value"
                         radius={[4, 4, 0, 0]}
                         cursor="pointer"
                         onClick={(data) => {
@@ -1727,9 +1730,9 @@ export default function Analytics() {
                         }}
                       >
                         {salaryGapDistribution.map((entry, index) => (
-                          <Cell 
-                            key={`cell-${index}`} 
-                            fill={entry.isNegative ? 'hsl(var(--destructive))' : 'hsl(142, 76%, 36%)'} 
+                          <Cell
+                            key={`cell-${index}`}
+                            fill={entry.isNegative ? 'hsl(var(--destructive))' : 'hsl(142, 76%, 36%)'}
                           />
                         ))}
                       </Bar>
@@ -2437,7 +2440,7 @@ export default function Analytics() {
                     <div className="space-y-2 text-right">
                       <label className="text-sm font-medium">קישור ללינקדאין</label>
                       {selectedEmployee.linkedin_url ? (
-                        <a 
+                        <a
                           href={selectedEmployee.linkedin_url}
                           target="_blank"
                           rel="noopener noreferrer"

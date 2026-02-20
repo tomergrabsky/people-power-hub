@@ -1,7 +1,8 @@
 // Employee Management Page
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -156,7 +157,7 @@ export default function Employees() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
-  
+
   // Column visibility - all employee table fields
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     id: false,
@@ -211,7 +212,7 @@ export default function Employees() {
     our_sourcing: 'איתור שלנו?',
     leaving_reason_id: 'סיבת רצון לעזוב - קטגוריות',
   };
-  
+
   // Manager-only columns
   const managerOnlyColumns = ['cost', 'attrition_risk', 'attrition_risk_reason', 'unit_criticality', 'salary_raise_date', 'salary_raise_percentage', 'leaving_reason_id'];
 
@@ -265,12 +266,12 @@ export default function Employees() {
     if (over && active.id !== over.id) {
       const oldIndex = columnOrder.findIndex(col => col === active.id);
       const newIndex = columnOrder.findIndex(col => col === over.id);
-      
+
       const newOrder = arrayMove(columnOrder, oldIndex, newIndex);
       updateColumnOrder(newOrder);
     }
   };
-  
+
   // Dialog states
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -338,23 +339,33 @@ export default function Employees() {
 
   const fetchData = async () => {
     setLoading(true);
-    const [employeesRes, rolesRes, projectsRes, companiesRes, branchesRes, seniorityRes, leavingReasonsRes] = await Promise.all([
-      supabase.from('employees').select('*').order('full_name'),
-      supabase.from('job_roles').select('*').order('name'),
-      supabase.from('projects').select('*').order('name'),
-      supabase.from('employing_companies').select('*').order('name'),
-      supabase.from('branches').select('*').order('name'),
-      supabase.from('seniority_levels').select('*').order('name'),
-      supabase.from('leaving_reasons').select('*').order('name'),
-    ]);
+    try {
+      const [
+        employeesSnap, rolesSnap, projectsSnap,
+        companiesSnap, branchesSnap, senioritySnap, leavingSnap
+      ] = await Promise.all([
+        getDocs(collection(db, 'employees')),
+        getDocs(collection(db, 'job_roles')),
+        getDocs(collection(db, 'projects')),
+        getDocs(collection(db, 'employing_companies')),
+        getDocs(collection(db, 'branches')),
+        getDocs(collection(db, 'seniority_levels')),
+        getDocs(collection(db, 'leaving_reasons'))
+      ]);
 
-    if (employeesRes.data) setEmployees(employeesRes.data);
-    if (rolesRes.data) setJobRoles(rolesRes.data);
-    if (projectsRes.data) setProjects(projectsRes.data);
-    if (companiesRes.data) setEmployingCompanies(companiesRes.data);
-    if (branchesRes.data) setBranches(branchesRes.data);
-    if (seniorityRes.data) setSeniorityLevels(seniorityRes.data);
-    if (leavingReasonsRes.data) setLeavingReasons(leavingReasonsRes.data);
+      const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
+
+      setEmployees(mapDocs(employeesSnap));
+      setJobRoles(mapDocs(rolesSnap));
+      setProjects(mapDocs(projectsSnap));
+      setEmployingCompanies(mapDocs(companiesSnap));
+      setBranches(mapDocs(branchesSnap));
+      setSeniorityLevels(mapDocs(senioritySnap));
+      setLeavingReasons(mapDocs(leavingSnap));
+    } catch (e) {
+      console.error(e);
+      toast.error('שגיאה בטעינת הנתונים');
+    }
     setLoading(false);
   };
 
@@ -406,8 +417,8 @@ export default function Employees() {
 
   const filteredEmployees = employees.filter(emp => {
     const matchesSearch = emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                          emp.id_number.includes(searchTerm) ||
-                          (emp.city?.toLowerCase().includes(searchTerm.toLowerCase()));
+      emp.id_number.includes(searchTerm) ||
+      (emp.city?.toLowerCase().includes(searchTerm.toLowerCase()));
     const matchesProject = filterProject.length === 0 || (emp.project_id && filterProject.includes(emp.project_id));
     const matchesRole = filterRole.length === 0 || (emp.job_role_id && filterRole.includes(emp.job_role_id));
     const matchesCity = !filterCity || emp.city?.toLowerCase().includes(filterCity.toLowerCase());
@@ -418,18 +429,18 @@ export default function Employees() {
     const matchesUnitCriticality = filterUnitCriticality.length === 0 || (emp.unit_criticality !== null && emp.unit_criticality !== undefined && filterUnitCriticality.includes(emp.unit_criticality.toString()));
     const matchesOurSourcing = filterOurSourcing.length === 0 || filterOurSourcing.includes(emp.our_sourcing === true ? 'true' : 'false');
     const matchesRevolvingDoor = filterRevolvingDoor.length === 0 || filterRevolvingDoor.includes(emp.revolving_door === true ? 'true' : 'false');
-    
-    return matchesSearch && matchesProject && matchesRole && matchesCity && 
-           matchesBranch && matchesEmployingCompany && matchesSeniority && 
-           matchesAttritionRisk && matchesUnitCriticality && matchesOurSourcing && matchesRevolvingDoor;
+
+    return matchesSearch && matchesProject && matchesRole && matchesCity &&
+      matchesBranch && matchesEmployingCompany && matchesSeniority &&
+      matchesAttritionRisk && matchesUnitCriticality && matchesOurSourcing && matchesRevolvingDoor;
   });
 
   const sortedEmployees = [...filteredEmployees].sort((a, b) => {
     if (!sortField) return 0;
-    
+
     let aValue: string | number | null = null;
     let bValue: string | number | null = null;
-    
+
     switch (sortField) {
       case 'full_name':
         aValue = a.full_name.toLowerCase();
@@ -468,7 +479,7 @@ export default function Employees() {
         bValue = b.cost ?? 0;
         break;
     }
-    
+
     if (aValue === null || bValue === null) return 0;
     if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
     if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
@@ -491,8 +502,8 @@ export default function Employees() {
 
   const SortIcon = ({ field }: { field: string }) => {
     if (sortField !== field) return <ArrowUpDown className="w-4 h-4 opacity-50" />;
-    return sortDirection === 'asc' 
-      ? <ArrowUp className="w-4 h-4 text-primary" /> 
+    return sortDirection === 'asc'
+      ? <ArrowUp className="w-4 h-4 text-primary" />
       : <ArrowDown className="w-4 h-4 text-primary" />;
   };
 
@@ -569,21 +580,16 @@ export default function Employees() {
       insertData.company_attrition_risk = formData.company_attrition_risk ? parseInt(formData.company_attrition_risk) : null;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await supabase.from('employees').insert(insertData as any);
-
-    setFormLoading(false);
-    if (error) {
-      if (error.message.includes('duplicate')) {
-        toast.error('מספר תעודת זהות כבר קיים במערכת');
-      } else {
-        toast.error('שגיאה בהוספת העובד');
-      }
-    } else {
+    try {
+      await addDoc(collection(db, 'employees'), insertData);
+      setFormLoading(false);
       toast.success('העובד נוסף בהצלחה');
       setIsAddDialogOpen(false);
       resetForm();
       fetchData();
+    } catch (error: any) {
+      setFormLoading(false);
+      toast.error('שגיאה בהוספת העובד');
     }
   };
 
@@ -625,39 +631,35 @@ export default function Employees() {
       updateData.company_retention_plan = formData.company_retention_plan || null;
       updateData.company_attrition_risk = formData.company_attrition_risk ? parseInt(formData.company_attrition_risk) : null;
     }
-    
+
     // Super admin only field
     if (isSuperAdmin) {
       updateData.real_market_salary = formData.real_market_salary ? parseFloat(formData.real_market_salary) : null;
     }
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const { error } = await supabase
-      .from('employees')
-      .update(updateData as any)
-      .eq('id', selectedEmployee.id);
-
-    setFormLoading(false);
-    if (error) {
-      toast.error('שגיאה בעדכון העובד');
-    } else {
+    try {
+      await updateDoc(doc(db, 'employees', selectedEmployee.id), updateData);
+      setFormLoading(false);
       toast.success('העובד עודכן בהצלחה');
       setIsEditDialogOpen(false);
       setSelectedEmployee(null);
       resetForm();
       fetchData();
+    } catch (error: any) {
+      setFormLoading(false);
+      toast.error('שגיאה בעדכון העובד');
     }
   };
 
   const handleDelete = async (employee: Employee) => {
     if (!confirm(`האם למחוק את ${employee.full_name}?`)) return;
 
-    const { error } = await supabase.from('employees').delete().eq('id', employee.id);
-    if (error) {
-      toast.error('שגיאה במחיקת העובד');
-    } else {
+    try {
+      await deleteDoc(doc(db, 'employees', employee.id));
       toast.success('העובד נמחק בהצלחה');
       fetchData();
+    } catch (error: any) {
+      toast.error('שגיאה במחיקת העובד');
     }
   };
 
@@ -738,10 +740,10 @@ export default function Employees() {
     // Create export data with Hebrew headers
     const exportData = filteredEmployees.map(employee => {
       const row: Record<string, string | number | null> = {};
-      
+
       exportColumns.forEach(col => {
         const label = columnLabels[col] || col;
-        
+
         switch (col) {
           case 'job_role_id':
             row[label] = getRoleName(employee.job_role_id);
@@ -787,7 +789,7 @@ export default function Employees() {
             row[label] = (employee as unknown as Record<string, string | number | null>)[col] ?? '-';
         }
       });
-      
+
       return row;
     });
 
@@ -1589,7 +1591,7 @@ export default function Employees() {
           <div className="space-y-2 text-right col-span-2">
             <Label>קישור ללינקדאין</Label>
             {selectedEmployee?.linkedin_url ? (
-              <a 
+              <a
                 href={selectedEmployee.linkedin_url}
                 target="_blank"
                 rel="noopener noreferrer"
@@ -1908,7 +1910,7 @@ export default function Employees() {
                           {orderedVisibleColumns.map((col) => {
                             const sortableFields = ['full_name', 'birth_date', 'job_role_id', 'project_id', 'professional_experience_years', 'organization_experience_years', 'city', 'start_date', 'cost'];
                             const isSortable = sortableFields.includes(col);
-                            
+
                             return (
                               <DraggableTableHeader
                                 key={col}
@@ -1933,106 +1935,106 @@ export default function Employees() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                    {sortedEmployees.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={visibleColumnsCount + 1} className="text-center py-8 text-muted-foreground">
-                          לא נמצאו עובדים
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      sortedEmployees.map((employee) => (
-                        <TableRow key={employee.id} className="hover:bg-secondary/30 transition-colors">
-                          {orderedVisibleColumns.map((col) => {
-                            const renderCell = () => {
-                              switch (col) {
-                                case 'full_name':
-                                  return <TableCell key={col} className="font-medium">{employee.full_name}</TableCell>;
-                                case 'id':
-                                  return <TableCell key={col} dir="ltr" className="text-left font-mono text-xs">{employee.id}</TableCell>;
-                                case 'id_number':
-                                  return <TableCell key={col}>{employee.id_number}</TableCell>;
-                                case 'birth_date':
-                                  return <TableCell key={col} dir="ltr" className="text-left">{employee.birth_date ? new Date(employee.birth_date).toLocaleDateString('he-IL') : '-'}</TableCell>;
-                                case 'job_role_id':
-                                  return <TableCell key={col}><Badge variant="secondary">{getRoleName(employee.job_role_id)}</Badge></TableCell>;
-                                case 'project_id':
-                                  return <TableCell key={col}>{getProjectName(employee.project_id)}</TableCell>;
-                                case 'branch_id':
-                                  return <TableCell key={col}>{getBranchName(employee.branch_id)}</TableCell>;
-                                case 'employing_company_id':
-                                  return <TableCell key={col}>{getEmployingCompanyName(employee.employing_company_id)}</TableCell>;
-                                case 'seniority_level_id':
-                                  return <TableCell key={col}>{getSeniorityLevelName(employee.seniority_level_id)}</TableCell>;
-                                case 'professional_experience_years':
-                                  return <TableCell key={col}>{employee.professional_experience_years} שנים</TableCell>;
-                                case 'organization_experience_years':
-                                  return <TableCell key={col}>{getOrganizationExperienceYears(employee.start_date)} שנים</TableCell>;
-                                case 'city':
-                                  return <TableCell key={col}>{employee.city || '-'}</TableCell>;
-                                case 'start_date':
-                                  return <TableCell key={col} dir="ltr" className="text-left">{new Date(employee.start_date).toLocaleDateString('he-IL')}</TableCell>;
-                                case 'cost':
-                                  return <TableCell key={col} dir="ltr" className="text-left">{employee.cost ? `₪${employee.cost.toLocaleString()}` : '-'}</TableCell>;
-                                case 'attrition_risk':
-                                  return <TableCell key={col}>{employee.attrition_risk ?? '-'}</TableCell>;
-                                case 'attrition_risk_reason':
-                                  return <TableCell key={col} className="max-w-32 truncate" title={employee.attrition_risk_reason || ''}>{employee.attrition_risk_reason || '-'}</TableCell>;
-                                case 'unit_criticality':
-                                  return <TableCell key={col}>{employee.unit_criticality ?? '-'}</TableCell>;
-                                case 'salary_raise_date':
-                                  return <TableCell key={col} dir="ltr" className="text-left">{employee.salary_raise_date ? new Date(employee.salary_raise_date).toLocaleDateString('he-IL') : '-'}</TableCell>;
-                                case 'salary_raise_percentage':
-                                  return <TableCell key={col} dir="ltr" className="text-left">{employee.salary_raise_percentage ? `${employee.salary_raise_percentage}%` : '-'}</TableCell>;
-                                case 'created_at':
-                                  return <TableCell key={col} dir="ltr" className="text-left">{employee.created_at ? new Date(employee.created_at).toLocaleDateString('he-IL') : '-'}</TableCell>;
-                                case 'updated_at':
-                                  return <TableCell key={col} dir="ltr" className="text-left">{employee.updated_at ? new Date(employee.updated_at).toLocaleDateString('he-IL') : '-'}</TableCell>;
-                                case 'created_by':
-                                  return <TableCell key={col} dir="ltr" className="text-left font-mono text-xs">{employee.created_by ? employee.created_by.slice(0, 8) : '-'}</TableCell>;
-                                case 'our_sourcing':
-                                  return <TableCell key={col}>{employee.our_sourcing === true ? 'כן' : employee.our_sourcing === false ? 'לא' : '-'}</TableCell>;
-                                case 'leaving_reason_id':
-                                  return <TableCell key={col}>{getLeavingReasonName(employee.leaving_reason_id)}</TableCell>;
-                                default:
-                                  return null;
-                              }
-                            };
-                            return renderCell();
-                          })}
-                          <TableCell>
-                            <div className="flex gap-1">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openViewDialog(employee)}
-                                title="צפייה"
-                              >
-                                <Eye className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => openEditDialog(employee)}
-                                title="עריכה"
-                              >
-                                <Pencil className="w-4 h-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => handleDelete(employee)}
-                                className="text-destructive hover:text-destructive"
-                                title="מחיקה"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </div>
+                      {sortedEmployees.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={visibleColumnsCount + 1} className="text-center py-8 text-muted-foreground">
+                            לא נמצאו עובדים
                           </TableCell>
                         </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
+                      ) : (
+                        sortedEmployees.map((employee) => (
+                          <TableRow key={employee.id} className="hover:bg-secondary/30 transition-colors">
+                            {orderedVisibleColumns.map((col) => {
+                              const renderCell = () => {
+                                switch (col) {
+                                  case 'full_name':
+                                    return <TableCell key={col} className="font-medium">{employee.full_name}</TableCell>;
+                                  case 'id':
+                                    return <TableCell key={col} dir="ltr" className="text-left font-mono text-xs">{employee.id}</TableCell>;
+                                  case 'id_number':
+                                    return <TableCell key={col}>{employee.id_number}</TableCell>;
+                                  case 'birth_date':
+                                    return <TableCell key={col} dir="ltr" className="text-left">{employee.birth_date ? new Date(employee.birth_date).toLocaleDateString('he-IL') : '-'}</TableCell>;
+                                  case 'job_role_id':
+                                    return <TableCell key={col}><Badge variant="secondary">{getRoleName(employee.job_role_id)}</Badge></TableCell>;
+                                  case 'project_id':
+                                    return <TableCell key={col}>{getProjectName(employee.project_id)}</TableCell>;
+                                  case 'branch_id':
+                                    return <TableCell key={col}>{getBranchName(employee.branch_id)}</TableCell>;
+                                  case 'employing_company_id':
+                                    return <TableCell key={col}>{getEmployingCompanyName(employee.employing_company_id)}</TableCell>;
+                                  case 'seniority_level_id':
+                                    return <TableCell key={col}>{getSeniorityLevelName(employee.seniority_level_id)}</TableCell>;
+                                  case 'professional_experience_years':
+                                    return <TableCell key={col}>{employee.professional_experience_years} שנים</TableCell>;
+                                  case 'organization_experience_years':
+                                    return <TableCell key={col}>{getOrganizationExperienceYears(employee.start_date)} שנים</TableCell>;
+                                  case 'city':
+                                    return <TableCell key={col}>{employee.city || '-'}</TableCell>;
+                                  case 'start_date':
+                                    return <TableCell key={col} dir="ltr" className="text-left">{new Date(employee.start_date).toLocaleDateString('he-IL')}</TableCell>;
+                                  case 'cost':
+                                    return <TableCell key={col} dir="ltr" className="text-left">{employee.cost ? `₪${employee.cost.toLocaleString()}` : '-'}</TableCell>;
+                                  case 'attrition_risk':
+                                    return <TableCell key={col}>{employee.attrition_risk ?? '-'}</TableCell>;
+                                  case 'attrition_risk_reason':
+                                    return <TableCell key={col} className="max-w-32 truncate" title={employee.attrition_risk_reason || ''}>{employee.attrition_risk_reason || '-'}</TableCell>;
+                                  case 'unit_criticality':
+                                    return <TableCell key={col}>{employee.unit_criticality ?? '-'}</TableCell>;
+                                  case 'salary_raise_date':
+                                    return <TableCell key={col} dir="ltr" className="text-left">{employee.salary_raise_date ? new Date(employee.salary_raise_date).toLocaleDateString('he-IL') : '-'}</TableCell>;
+                                  case 'salary_raise_percentage':
+                                    return <TableCell key={col} dir="ltr" className="text-left">{employee.salary_raise_percentage ? `${employee.salary_raise_percentage}%` : '-'}</TableCell>;
+                                  case 'created_at':
+                                    return <TableCell key={col} dir="ltr" className="text-left">{employee.created_at ? new Date(employee.created_at).toLocaleDateString('he-IL') : '-'}</TableCell>;
+                                  case 'updated_at':
+                                    return <TableCell key={col} dir="ltr" className="text-left">{employee.updated_at ? new Date(employee.updated_at).toLocaleDateString('he-IL') : '-'}</TableCell>;
+                                  case 'created_by':
+                                    return <TableCell key={col} dir="ltr" className="text-left font-mono text-xs">{employee.created_by ? employee.created_by.slice(0, 8) : '-'}</TableCell>;
+                                  case 'our_sourcing':
+                                    return <TableCell key={col}>{employee.our_sourcing === true ? 'כן' : employee.our_sourcing === false ? 'לא' : '-'}</TableCell>;
+                                  case 'leaving_reason_id':
+                                    return <TableCell key={col}>{getLeavingReasonName(employee.leaving_reason_id)}</TableCell>;
+                                  default:
+                                    return null;
+                                }
+                              };
+                              return renderCell();
+                            })}
+                            <TableCell>
+                              <div className="flex gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openViewDialog(employee)}
+                                  title="צפייה"
+                                >
+                                  <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openEditDialog(employee)}
+                                  title="עריכה"
+                                >
+                                  <Pencil className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDelete(employee)}
+                                  className="text-destructive hover:text-destructive"
+                                  title="מחיקה"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))
+                      )}
+                    </TableBody>
+                  </Table>
                 </DndContext>
               </div>
             </ContextMenuTrigger>

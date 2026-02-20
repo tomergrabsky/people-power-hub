@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,13 +64,17 @@ export default function AdminRoles() {
 
   const fetchRoles = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('job_roles')
-      .select('*')
-      .order('name');
-
-    if (data && !error) {
-      setRoles(data);
+    try {
+      const snap = await getDocs(collection(db, 'job_roles'));
+      const fetched = snap.docs.map(doc => ({
+        id: doc.id,
+        created_at: new Date().toISOString(),
+        ...doc.data()
+      })) as JobRole[];
+      setRoles(fetched.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (e) {
+      console.error(e);
+      toast.error('שגיאה בטעינת תפקידים');
     }
     setLoading(false);
   };
@@ -84,24 +89,20 @@ export default function AdminRoles() {
       return;
     }
 
-    setFormLoading(true);
-    const { error } = await supabase.from('job_roles').insert({
-      name: formData.name.trim(),
-      description: formData.description.trim() || null,
-    });
-
-    setFormLoading(false);
-    if (error) {
-      if (error.message.includes('duplicate')) {
-        toast.error('תפקיד עם שם זה כבר קיים');
-      } else {
-        toast.error('שגיאה בהוספת התפקיד');
-      }
-    } else {
+    try {
+      await addDoc(collection(db, 'job_roles'), {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        created_at: new Date().toISOString()
+      });
+      setFormLoading(false);
       toast.success('התפקיד נוסף בהצלחה');
       setIsAddDialogOpen(false);
       resetForm();
       fetchRoles();
+    } catch (e) {
+      setFormLoading(false);
+      toast.error('שגיאה בהוספת התפקיד');
     }
   };
 
@@ -112,36 +113,32 @@ export default function AdminRoles() {
       return;
     }
 
-    setFormLoading(true);
-    const { error } = await supabase
-      .from('job_roles')
-      .update({
+    try {
+      await updateDoc(doc(db, 'job_roles', selectedRole.id), {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-      })
-      .eq('id', selectedRole.id);
-
-    setFormLoading(false);
-    if (error) {
-      toast.error('שגיאה בעדכון התפקיד');
-    } else {
+      });
+      setFormLoading(false);
       toast.success('התפקיד עודכן בהצלחה');
       setIsEditDialogOpen(false);
       setSelectedRole(null);
       resetForm();
       fetchRoles();
+    } catch (e) {
+      setFormLoading(false);
+      toast.error('שגיאה בעדכון התפקיד');
     }
   };
 
   const handleDelete = async (role: JobRole) => {
     if (!confirm(`האם למחוק את התפקיד "${role.name}"?`)) return;
 
-    const { error } = await supabase.from('job_roles').delete().eq('id', role.id);
-    if (error) {
-      toast.error('שגיאה במחיקת התפקיד. ייתכן שיש עובדים עם תפקיד זה.');
-    } else {
+    try {
+      await deleteDoc(doc(db, 'job_roles', role.id));
       toast.success('התפקיד נמחק בהצלחה');
       fetchRoles();
+    } catch (e) {
+      toast.error('שגיאה במחיקת התפקיד. ייתכן שיש עובדים עם תפקיד זה.');
     }
   };
 

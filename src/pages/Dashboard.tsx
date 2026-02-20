@@ -1,11 +1,11 @@
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Users, Loader2, Cake, UserPlus, Award } from 'lucide-react';
-import { useState } from 'react';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { collection, getDocs } from 'firebase/firestore';
 import {
   Dialog,
   DialogContent,
@@ -59,62 +59,67 @@ export default function Dashboard() {
 
   const fetchStats = async () => {
     setLoading(true);
-    const { data: employeesData } = await supabase
-      .from('employees')
-      .select('id, full_name, cost, birth_date, start_date');
+    try {
+      const snap = await getDocs(collection(db, 'employees'));
+      const fetchedEmployees = snap.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Employee[];
 
-    const fetchedEmployees = employeesData || [];
-    setEmployees(fetchedEmployees);
+      setEmployees(fetchedEmployees);
 
-    const today = new Date();
-    
-    // Calculate upcoming birthdays (next 7 days)
-    const upcomingBirthdays = fetchedEmployees.filter(emp => {
-      if (!emp.birth_date) return false;
-      const birthDate = new Date(emp.birth_date);
-      const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-      
-      if (thisYearBirthday < today) {
-        thisYearBirthday.setFullYear(today.getFullYear() + 1);
-      }
-      
-      const diffTime = thisYearBirthday.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      return diffDays >= 0 && diffDays <= 7;
-    }).length;
+      const today = new Date();
 
-    // Calculate employees hired this month
-    const currentMonth = today.getMonth();
-    const currentYear = today.getFullYear();
-    const hiredThisMonth = fetchedEmployees.filter(emp => {
-      if (!emp.start_date) return false;
-      const startDate = new Date(emp.start_date);
-      return startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear;
-    }).length;
+      // Calculate upcoming birthdays (next 7 days)
+      const upcomingBirthdays = fetchedEmployees.filter(emp => {
+        if (!emp.birth_date) return false;
+        const birthDate = new Date(emp.birth_date);
+        const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
 
-    // Calculate upcoming work anniversaries (פז"מולדת) - next 7 days
-    const upcomingWorkAnniversaries = fetchedEmployees.filter(emp => {
-      if (!emp.start_date) return false;
-      const startDate = new Date(emp.start_date);
-      const thisYearAnniversary = new Date(today.getFullYear(), startDate.getMonth(), startDate.getDate());
-      
-      if (thisYearAnniversary < today) {
-        thisYearAnniversary.setFullYear(today.getFullYear() + 1);
-      }
-      
-      const diffTime = thisYearAnniversary.getTime() - today.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      
-      return diffDays >= 0 && diffDays <= 7;
-    }).length;
+        if (thisYearBirthday < today) {
+          thisYearBirthday.setFullYear(today.getFullYear() + 1);
+        }
 
-    setStats({
-      totalEmployees: fetchedEmployees.length,
-      upcomingBirthdays,
-      hiredThisMonth,
-      upcomingWorkAnniversaries,
-    });
+        const diffTime = thisYearBirthday.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        return diffDays >= 0 && diffDays <= 7;
+      }).length;
+
+      // Calculate employees hired this month
+      const currentMonth = today.getMonth();
+      const currentYear = today.getFullYear();
+      const hiredThisMonth = fetchedEmployees.filter(emp => {
+        if (!emp.start_date) return false;
+        const startDate = new Date(emp.start_date);
+        return startDate.getMonth() === currentMonth && startDate.getFullYear() === currentYear;
+      }).length;
+
+      // Calculate upcoming work anniversaries (פז"מולדת) - next 7 days
+      const upcomingWorkAnniversaries = fetchedEmployees.filter(emp => {
+        if (!emp.start_date) return false;
+        const startDate = new Date(emp.start_date);
+        const thisYearAnniversary = new Date(today.getFullYear(), startDate.getMonth(), startDate.getDate());
+
+        if (thisYearAnniversary < today) {
+          thisYearAnniversary.setFullYear(today.getFullYear() + 1);
+        }
+
+        const diffTime = thisYearAnniversary.getTime() - today.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+        return diffDays >= 0 && diffDays <= 7;
+      }).length;
+
+      setStats({
+        totalEmployees: fetchedEmployees.length,
+        upcomingBirthdays,
+        hiredThisMonth,
+        upcomingWorkAnniversaries,
+      });
+    } catch (e) {
+      console.error(e);
+    }
     setLoading(false);
   };
 
@@ -126,29 +131,29 @@ export default function Dashboard() {
         if (!emp.birth_date) return false;
         const birthDate = new Date(emp.birth_date);
         const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-        
+
         if (thisYearBirthday < today) {
           thisYearBirthday.setFullYear(today.getFullYear() + 1);
         }
-        
+
         const diffTime = thisYearBirthday.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         return diffDays >= 0 && diffDays <= 7;
       })
       .map(emp => {
         const today = new Date();
         const birthDate = new Date(emp.birth_date!);
         const thisYearBirthday = new Date(today.getFullYear(), birthDate.getMonth(), birthDate.getDate());
-        
+
         if (thisYearBirthday < today) {
           thisYearBirthday.setFullYear(today.getFullYear() + 1);
         }
-        
+
         const diffTime = thisYearBirthday.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const age = thisYearBirthday.getFullYear() - birthDate.getFullYear();
-        
+
         return {
           ...emp,
           daysUntilBirthday: diffDays,
@@ -167,29 +172,29 @@ export default function Dashboard() {
         if (!emp.start_date) return false;
         const startDate = new Date(emp.start_date);
         const thisYearAnniversary = new Date(today.getFullYear(), startDate.getMonth(), startDate.getDate());
-        
+
         if (thisYearAnniversary < today) {
           thisYearAnniversary.setFullYear(today.getFullYear() + 1);
         }
-        
+
         const diffTime = thisYearAnniversary.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-        
+
         return diffDays >= 0 && diffDays <= 7;
       })
       .map(emp => {
         const today = new Date();
         const startDate = new Date(emp.start_date!);
         const thisYearAnniversary = new Date(today.getFullYear(), startDate.getMonth(), startDate.getDate());
-        
+
         if (thisYearAnniversary < today) {
           thisYearAnniversary.setFullYear(today.getFullYear() + 1);
         }
-        
+
         const diffTime = thisYearAnniversary.getTime() - today.getTime();
         const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         const yearsAtWork = thisYearAnniversary.getFullYear() - startDate.getFullYear();
-        
+
         return {
           ...emp,
           daysUntilAnniversary: diffDays,
@@ -205,7 +210,7 @@ export default function Dashboard() {
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
-    
+
     return employees
       .filter(emp => {
         if (!emp.start_date) return false;
@@ -243,7 +248,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            <Card 
+            <Card
               className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
               onClick={() => navigate('/employees')}
             >
@@ -261,7 +266,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card 
+            <Card
               className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
               onClick={() => setIsHiredDialogOpen(true)}
             >
@@ -279,7 +284,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card 
+            <Card
               className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
               onClick={() => setIsBirthdayDialogOpen(true)}
             >
@@ -297,7 +302,7 @@ export default function Dashboard() {
               </CardContent>
             </Card>
 
-            <Card 
+            <Card
               className="stat-card cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
               onClick={() => setIsPazmuledetDialogOpen(true)}
             >
@@ -377,10 +382,10 @@ export default function Dashboard() {
                       </TableCell>
                       <TableCell className="text-right">{emp.upcomingAge}</TableCell>
                       <TableCell className="text-right">
-                        {emp.daysUntilBirthday === 0 
-                          ? 'היום! 🎉' 
-                          : emp.daysUntilBirthday === 1 
-                            ? 'מחר' 
+                        {emp.daysUntilBirthday === 0
+                          ? 'היום! 🎉'
+                          : emp.daysUntilBirthday === 1
+                            ? 'מחר'
                             : `${emp.daysUntilBirthday} ימים`}
                       </TableCell>
                     </TableRow>
@@ -425,10 +430,10 @@ export default function Dashboard() {
                       </TableCell>
                       <TableCell className="text-right">{emp.yearsAtWork}</TableCell>
                       <TableCell className="text-right">
-                        {emp.daysUntilAnniversary === 0 
-                          ? 'היום! 🎉' 
-                          : emp.daysUntilAnniversary === 1 
-                            ? 'מחר' 
+                        {emp.daysUntilAnniversary === 0
+                          ? 'היום! 🎉'
+                          : emp.daysUntilAnniversary === 1
+                            ? 'מחר'
                             : `${emp.daysUntilAnniversary} ימים`}
                       </TableCell>
                     </TableRow>

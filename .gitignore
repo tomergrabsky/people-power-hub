@@ -1,6 +1,7 @@
 # CSV import files (sensitive data - never push to git)
 csv-import/
 migrate-data.mjs
+service-account.json
 
 # Logs
 logs

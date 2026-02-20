@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -63,13 +64,17 @@ export default function AdminProjects() {
 
   const fetchProjects = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('projects')
-      .select('*')
-      .order('name');
-
-    if (data && !error) {
-      setProjects(data);
+    try {
+      const snap = await getDocs(collection(db, 'projects'));
+      const fetched = snap.docs.map(doc => ({
+        id: doc.id,
+        created_at: new Date().toISOString(),
+        ...doc.data()
+      })) as Project[];
+      setProjects(fetched.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (e) {
+      console.error(e);
+      toast.error('שגיאה בטעינת התכניות');
     }
     setLoading(false);
   };
@@ -84,24 +89,20 @@ export default function AdminProjects() {
       return;
     }
 
-    setFormLoading(true);
-    const { error } = await supabase.from('projects').insert({
-      name: formData.name.trim(),
-      description: formData.description.trim() || null,
-    });
-
-    setFormLoading(false);
-    if (error) {
-      if (error.message.includes('duplicate')) {
-        toast.error('תכנית עם שם זה כבר קיימת');
-      } else {
-        toast.error('שגיאה בהוספת התכנית');
-      }
-    } else {
+    try {
+      await addDoc(collection(db, 'projects'), {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        created_at: new Date().toISOString()
+      });
+      setFormLoading(false);
       toast.success('התכנית נוספה בהצלחה');
       setIsAddDialogOpen(false);
       resetForm();
       fetchProjects();
+    } catch (e) {
+      setFormLoading(false);
+      toast.error('שגיאה בהוספת התכנית');
     }
   };
 
@@ -112,36 +113,32 @@ export default function AdminProjects() {
       return;
     }
 
-    setFormLoading(true);
-    const { error } = await supabase
-      .from('projects')
-      .update({
+    try {
+      await updateDoc(doc(db, 'projects', selectedProject.id), {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-      })
-      .eq('id', selectedProject.id);
-
-    setFormLoading(false);
-    if (error) {
-      toast.error('שגיאה בעדכון התכנית');
-    } else {
+      });
+      setFormLoading(false);
       toast.success('התכנית עודכנה בהצלחה');
       setIsEditDialogOpen(false);
       setSelectedProject(null);
       resetForm();
       fetchProjects();
+    } catch (e) {
+      setFormLoading(false);
+      toast.error('שגיאה בעדכון התכנית');
     }
   };
 
   const handleDelete = async (project: Project) => {
     if (!confirm(`האם למחוק את התכנית "${project.name}"?`)) return;
 
-    const { error } = await supabase.from('projects').delete().eq('id', project.id);
-    if (error) {
-      toast.error('שגיאה במחיקת התכנית. ייתכן שיש עובדים משויכים אליה.');
-    } else {
+    try {
+      await deleteDoc(doc(db, 'projects', project.id));
       toast.success('התכנית נמחקה בהצלחה');
       fetchProjects();
+    } catch (e) {
+      toast.error('שגיאה במחיקת התכנית. ייתכן שיש עובדים משויכים אליה.');
     }
   };
 

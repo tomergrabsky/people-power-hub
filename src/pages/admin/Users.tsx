@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -54,7 +55,7 @@ interface UserWithRole {
   email: string | null;
   full_name: string | null;
   role: AppRole;
-  created_at: string;
+  created_at?: string;
 }
 
 interface Project {
@@ -110,38 +111,35 @@ export default function AdminUsers() {
 
   const fetchData = async () => {
     setLoading(true);
-    
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('*')
-      .order('email');
 
-    const { data: roles, error: rolesError } = await supabase
-      .from('user_roles')
-      .select('*');
+    try {
+      const [rolesSnap, projectsSnap, profilesSnap] = await Promise.all([
+        getDocs(collection(db, 'user_roles')),
+        getDocs(collection(db, 'projects')),
+        getDocs(collection(db, 'profiles')) // Note: Assuming profiles is a valid firestore collection
+      ]);
 
-    const { data: projectsData, error: projectsError } = await supabase
-      .from('projects')
-      .select('*')
-      .order('name');
+      const roles = rolesSnap.docs.map(doc => ({ user_id: doc.id, ...doc.data() }));
+      const projectsData = projectsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })) as Project[];
 
-    if (profiles && roles && !profilesError && !rolesError) {
-      const usersWithRoles = profiles.map((profile) => {
+      const profiles = profilesSnap.docs.map(doc => ({ user_id: doc.id, ...doc.data() }));
+
+      const usersWithRoles = profiles.map((profile: any) => {
         const userRole = roles.find((r) => r.user_id === profile.user_id);
         return {
-          id: profile.id,
+          id: profile.user_id,
           user_id: profile.user_id,
-          email: profile.email,
-          full_name: profile.full_name,
-          role: (userRole?.role as AppRole) || 'user',
-          created_at: profile.created_at,
+          email: profile.email || '',
+          full_name: profile.full_name || '',
+          role: ((userRole as any)?.role as AppRole) || 'user',
+          created_at: profile.created_at || new Date().toISOString(),
         };
       });
       setUsers(usersWithRoles);
-    }
-
-    if (projectsData && !projectsError) {
       setProjects(projectsData);
+    } catch (e) {
+      console.error(e);
+      toast.error('שגיאה בטעינת הנתונים');
     }
 
     setLoading(false);
@@ -166,13 +164,17 @@ export default function AdminUsers() {
 
   const openProjectsDialog = async (userItem: UserWithRole) => {
     setSelectedUser(userItem);
-    
-    const { data: userProjects } = await supabase
-      .from('user_projects')
-      .select('project_id')
-      .eq('user_id', userItem.user_id);
 
-    setSelectedProjects(userProjects?.map((up: UserProject) => up.project_id) || []);
+    try {
+      const snap = await getDocs(collection(db, 'user_projects'));
+      const userProjects = snap.docs
+        .map(doc => doc.data() as UserProject)
+        .filter(up => (up as any).user_id === userItem.user_id);
+
+      setSelectedProjects(userProjects.map((up) => up.project_id) || []);
+    } catch (e) {
+      console.error(e);
+    }
     setIsProjectsDialogOpen(true);
   };
 
@@ -186,34 +188,17 @@ export default function AdminUsers() {
 
     setFormLoading(true);
 
-    const { data: existingRole } = await supabase
-      .from('user_roles')
-      .select('id')
-      .eq('user_id', selectedUser.user_id)
-      .maybeSingle();
+    try {
+      const roleRef = doc(db, 'user_roles', selectedUser.user_id);
+      await setDoc(roleRef, { role: selectedRole }, { merge: true });
 
-    let error;
-    if (existingRole) {
-      const result = await supabase
-        .from('user_roles')
-        .update({ role: selectedRole })
-        .eq('user_id', selectedUser.user_id);
-      error = result.error;
-    } else {
-      const result = await supabase
-        .from('user_roles')
-        .insert({ user_id: selectedUser.user_id, role: selectedRole });
-      error = result.error;
-    }
-
-    setFormLoading(false);
-    if (error) {
-      toast.error('שגיאה בעדכון ההרשאה');
-    } else {
       toast.success('ההרשאה עודכנה בהצלחה');
       setIsEditDialogOpen(false);
       fetchData();
+    } catch (e) {
+      toast.error('שגיאה בעדכון ההרשאה');
     }
+    setFormLoading(false);
   };
 
   const handleUpdateProjects = async () => {
@@ -221,39 +206,42 @@ export default function AdminUsers() {
 
     setFormLoading(true);
 
-    await supabase
-      .from('user_projects')
-      .delete()
-      .eq('user_id', selectedUser.user_id);
-
-    if (selectedProjects.length > 0) {
-      const { error } = await supabase.from('user_projects').insert(
-        selectedProjects.map((projectId) => ({
-          user_id: selectedUser.user_id,
-          project_id: projectId,
-        }))
-      );
-
-      if (error) {
-        setFormLoading(false);
-        toast.error('שגיאה בעדכון התכניות');
-        return;
+    try {
+      // Very naive implementation for User Projects mapping in NoSQL:
+      // Real implementation would delete existing entries and rewrite or use a subcollection.
+      // This might not scale nicely without a batch commit.
+      const snap = await getDocs(collection(db, 'user_projects'));
+      for (const d of snap.docs) {
+        if (d.data().user_id === selectedUser.user_id) {
+          await deleteDoc(doc(db, 'user_projects', d.id));
+        }
       }
-    }
 
+      if (selectedProjects.length > 0) {
+        for (const projectId of selectedProjects) {
+          await addDoc(collection(db, 'user_projects'), {
+            user_id: selectedUser.user_id,
+            project_id: projectId
+          });
+        }
+      }
+
+      toast.success('התכניות עודכנו בהצלחה');
+      setIsProjectsDialogOpen(false);
+    } catch (e) {
+      toast.error('שגיאה בעדכון התכניות');
+    }
     setFormLoading(false);
-    toast.success('התכניות עודכנו בהצלחה');
-    setIsProjectsDialogOpen(false);
   };
 
   const handleCreateUser = async () => {
     setFormErrors({});
 
     try {
-      createUserSchema.parse({ 
-        fullName: newUserName, 
-        email: newUserEmail, 
-        password: newUserPassword 
+      createUserSchema.parse({
+        fullName: newUserName,
+        email: newUserEmail,
+        password: newUserPassword
       });
     } catch (err) {
       if (err instanceof z.ZodError) {
@@ -268,65 +256,21 @@ export default function AdminUsers() {
 
     setFormLoading(true);
 
-    const { data: sessionData } = await supabase.auth.getSession();
-    
-    const { data, error } = await supabase.functions.invoke('manage-users', {
-      body: {
-        action: 'create',
-        email: newUserEmail,
-        password: newUserPassword,
-        fullName: newUserName,
-      },
-      headers: {
-        Authorization: `Bearer ${sessionData.session?.access_token}`,
-      },
-    });
-
+    // TODO: Calling Edge Functions or creating auth via Firebase Admin SDK
+    // In client side Firebase, you'd probably just want to write this using a Cloud Function
+    // Since we don't have Admin SDK set up here, this operation will just mock or fail.
+    // For now, inform the user they cannot create users here directly without admin sdk
+    toast.error('יצירת משתמשים חדשים באמצעות Firebase Admin מנותקת זמנית.');
     setFormLoading(false);
-
-    if (error || data?.error) {
-      const errorMsg = data?.error || error?.message || 'שגיאה ביצירת המשתמש';
-      if (errorMsg.includes('already been registered')) {
-        toast.error('משתמש עם אימייל זה כבר קיים במערכת');
-      } else {
-        toast.error(errorMsg);
-      }
-    } else {
-      toast.success('המשתמש נוצר בהצלחה');
-      setIsCreateDialogOpen(false);
-      setNewUserName('');
-      setNewUserEmail('');
-      setNewUserPassword('');
-      fetchData();
-    }
   };
 
   const handleDeleteUser = async () => {
     if (!selectedUser) return;
 
     setFormLoading(true);
-
-    const { data: sessionData } = await supabase.auth.getSession();
-
-    const { data, error } = await supabase.functions.invoke('manage-users', {
-      body: {
-        action: 'delete',
-        userId: selectedUser.user_id,
-      },
-      headers: {
-        Authorization: `Bearer ${sessionData.session?.access_token}`,
-      },
-    });
-
+    // TODO: Again Admin SDK is needed.
+    toast.error('מחיקת משתמשים מחייבת Firebase Admin פונקציות וזה מנותק כרגע.');
     setFormLoading(false);
-
-    if (error || data?.error) {
-      toast.error(data?.error || error?.message || 'שגיאה במחיקת המשתמש');
-    } else {
-      toast.success('המשתמש נמחק בהצלחה');
-      setIsDeleteDialogOpen(false);
-      fetchData();
-    }
   };
 
   const toggleProject = (projectId: string) => {
@@ -400,7 +344,7 @@ export default function AdminUsers() {
                       </TableCell>
                       <TableCell>{getRoleBadge(userItem.role)}</TableCell>
                       <TableCell dir="ltr" className="text-left">
-                        {new Date(userItem.created_at).toLocaleDateString('he-IL')}
+                        {userItem.created_at ? new Date(userItem.created_at).toLocaleDateString('he-IL') : '-'}
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
@@ -424,7 +368,7 @@ export default function AdminUsers() {
                               תכניות
                             </Button>
                           )}
-                          {userItem.user_id !== user?.id && (
+                          {userItem.user_id !== user?.uid && (
                             <Button
                               variant="ghost"
                               size="sm"

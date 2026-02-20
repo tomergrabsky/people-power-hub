@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,15 +53,17 @@ export default function EmployingCompanies() {
 
   const fetchCompanies = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('employing_companies')
-      .select('*')
-      .order('name');
-
-    if (error) {
+    try {
+      const snap = await getDocs(collection(db, 'employing_companies'));
+      const fetched = snap.docs.map(doc => ({
+        id: doc.id,
+        created_at: new Date().toISOString(),
+        ...doc.data()
+      })) as EmployingCompany[];
+      setCompanies(fetched.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (e) {
+      console.error(e);
       toast.error('שגיאה בטעינת החברות');
-    } else {
-      setCompanies(data || []);
     }
     setLoading(false);
   };
@@ -75,24 +78,20 @@ export default function EmployingCompanies() {
       return;
     }
 
-    setFormLoading(true);
-    const { error } = await supabase.from('employing_companies').insert({
-      name: formData.name.trim(),
-      description: formData.description.trim() || null,
-    });
-
-    setFormLoading(false);
-    if (error) {
-      if (error.message.includes('duplicate')) {
-        toast.error('חברה בשם זה כבר קיימת');
-      } else {
-        toast.error('שגיאה בהוספת החברה');
-      }
-    } else {
+    try {
+      await addDoc(collection(db, 'employing_companies'), {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        created_at: new Date().toISOString()
+      });
+      setFormLoading(false);
       toast.success('החברה נוספה בהצלחה');
       setIsAddDialogOpen(false);
       resetForm();
       fetchCompanies();
+    } catch (e) {
+      setFormLoading(false);
+      toast.error('שגיאה בהוספת החברה');
     }
   };
 
@@ -103,44 +102,32 @@ export default function EmployingCompanies() {
       return;
     }
 
-    setFormLoading(true);
-    const { error } = await supabase
-      .from('employing_companies')
-      .update({
+    try {
+      await updateDoc(doc(db, 'employing_companies', selectedCompany.id), {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-      })
-      .eq('id', selectedCompany.id);
-
-    setFormLoading(false);
-    if (error) {
-      toast.error('שגיאה בעדכון החברה');
-    } else {
+      });
+      setFormLoading(false);
       toast.success('החברה עודכנה בהצלחה');
       setIsEditDialogOpen(false);
       setSelectedCompany(null);
       resetForm();
       fetchCompanies();
+    } catch (e) {
+      setFormLoading(false);
+      toast.error('שגיאה בעדכון החברה');
     }
   };
 
   const handleDelete = async (company: EmployingCompany) => {
     if (!confirm(`האם למחוק את החברה "${company.name}"?`)) return;
 
-    const { error } = await supabase
-      .from('employing_companies')
-      .delete()
-      .eq('id', company.id);
-
-    if (error) {
-      if (error.message.includes('foreign key')) {
-        toast.error('לא ניתן למחוק חברה שמשויכים אליה עובדים');
-      } else {
-        toast.error('שגיאה במחיקת החברה');
-      }
-    } else {
+    try {
+      await deleteDoc(doc(db, 'employing_companies', company.id));
       toast.success('החברה נמחקה בהצלחה');
       fetchCompanies();
+    } catch (e) {
+      toast.error('שגיאה במחיקת לחברה. ייתכן שיש עובדים משויכים אליה.');
     }
   };
 

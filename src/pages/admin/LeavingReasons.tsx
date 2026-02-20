@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,15 +53,17 @@ export default function LeavingReasons() {
 
   const fetchReasons = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('leaving_reasons')
-      .select('*')
-      .order('name');
-
-    if (error) {
+    try {
+      const snap = await getDocs(collection(db, 'leaving_reasons'));
+      const fetched = snap.docs.map(doc => ({
+        id: doc.id,
+        created_at: new Date().toISOString(),
+        ...doc.data()
+      })) as LeavingReason[];
+      setReasons(fetched.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (e) {
+      console.error(e);
       toast.error('שגיאה בטעינת סיבות העזיבה');
-    } else {
-      setReasons(data || []);
     }
     setLoading(false);
   };
@@ -75,24 +78,20 @@ export default function LeavingReasons() {
       return;
     }
 
-    setFormLoading(true);
-    const { error } = await supabase.from('leaving_reasons').insert({
-      name: formData.name.trim(),
-      description: formData.description.trim() || null,
-    });
-
-    setFormLoading(false);
-    if (error) {
-      if (error.message.includes('duplicate')) {
-        toast.error('סיבת עזיבה בשם זה כבר קיימת');
-      } else {
-        toast.error('שגיאה בהוספת סיבת העזיבה');
-      }
-    } else {
+    try {
+      await addDoc(collection(db, 'leaving_reasons'), {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        created_at: new Date().toISOString()
+      });
+      setFormLoading(false);
       toast.success('סיבת העזיבה נוספה בהצלחה');
       setIsAddDialogOpen(false);
       resetForm();
       fetchReasons();
+    } catch (e) {
+      setFormLoading(false);
+      toast.error('שגיאה בהוספת סיבת העזיבה');
     }
   };
 
@@ -103,44 +102,32 @@ export default function LeavingReasons() {
       return;
     }
 
-    setFormLoading(true);
-    const { error } = await supabase
-      .from('leaving_reasons')
-      .update({
+    try {
+      await updateDoc(doc(db, 'leaving_reasons', selectedReason.id), {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-      })
-      .eq('id', selectedReason.id);
-
-    setFormLoading(false);
-    if (error) {
-      toast.error('שגיאה בעדכון סיבת העזיבה');
-    } else {
+      });
+      setFormLoading(false);
       toast.success('סיבת העזיבה עודכנה בהצלחה');
       setIsEditDialogOpen(false);
       setSelectedReason(null);
       resetForm();
       fetchReasons();
+    } catch (e) {
+      setFormLoading(false);
+      toast.error('שגיאה בעדכון סיבת העזיבה');
     }
   };
 
   const handleDelete = async (reason: LeavingReason) => {
     if (!confirm(`האם למחוק את סיבת העזיבה "${reason.name}"?`)) return;
 
-    const { error } = await supabase
-      .from('leaving_reasons')
-      .delete()
-      .eq('id', reason.id);
-
-    if (error) {
-      if (error.message.includes('foreign key')) {
-        toast.error('לא ניתן למחוק סיבת עזיבה שמשויכת לעובדים');
-      } else {
-        toast.error('שגיאה במחיקת סיבת העזיבה');
-      }
-    } else {
+    try {
+      await deleteDoc(doc(db, 'leaving_reasons', reason.id));
       toast.success('סיבת העזיבה נמחקה בהצלחה');
       fetchReasons();
+    } catch (e) {
+      toast.error('שגיאה במחיקת סיבת העזיבה');
     }
   };
 

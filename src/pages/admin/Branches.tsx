@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
+import { db } from '@/integrations/firebase/client';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc } from 'firebase/firestore';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -52,15 +53,17 @@ export default function Branches() {
 
   const fetchBranches = async () => {
     setLoading(true);
-    const { data, error } = await supabase
-      .from('branches')
-      .select('*')
-      .order('name');
-
-    if (error) {
+    try {
+      const snap = await getDocs(collection(db, 'branches'));
+      const fetched = snap.docs.map(doc => ({
+        id: doc.id,
+        created_at: new Date().toISOString(),
+        ...doc.data()
+      })) as Branch[];
+      setBranches(fetched.sort((a, b) => a.name.localeCompare(b.name)));
+    } catch (e) {
+      console.error(e);
       toast.error('שגיאה בטעינת הענפים');
-    } else {
-      setBranches(data || []);
     }
     setLoading(false);
   };
@@ -75,24 +78,20 @@ export default function Branches() {
       return;
     }
 
-    setFormLoading(true);
-    const { error } = await supabase.from('branches').insert({
-      name: formData.name.trim(),
-      description: formData.description.trim() || null,
-    });
-
-    setFormLoading(false);
-    if (error) {
-      if (error.message.includes('duplicate')) {
-        toast.error('ענף בשם זה כבר קיים');
-      } else {
-        toast.error('שגיאה בהוספת הענף');
-      }
-    } else {
+    try {
+      await addDoc(collection(db, 'branches'), {
+        name: formData.name.trim(),
+        description: formData.description.trim() || null,
+        created_at: new Date().toISOString()
+      });
+      setFormLoading(false);
       toast.success('הענף נוסף בהצלחה');
       setIsAddDialogOpen(false);
       resetForm();
       fetchBranches();
+    } catch (e) {
+      setFormLoading(false);
+      toast.error('שגיאה בהוספת הענף');
     }
   };
 
@@ -103,44 +102,32 @@ export default function Branches() {
       return;
     }
 
-    setFormLoading(true);
-    const { error } = await supabase
-      .from('branches')
-      .update({
+    try {
+      await updateDoc(doc(db, 'branches', selectedBranch.id), {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
-      })
-      .eq('id', selectedBranch.id);
-
-    setFormLoading(false);
-    if (error) {
-      toast.error('שגיאה בעדכון הענף');
-    } else {
+      });
+      setFormLoading(false);
       toast.success('הענף עודכן בהצלחה');
       setIsEditDialogOpen(false);
       setSelectedBranch(null);
       resetForm();
       fetchBranches();
+    } catch (e) {
+      setFormLoading(false);
+      toast.error('שגיאה בעדכון הענף');
     }
   };
 
   const handleDelete = async (branch: Branch) => {
     if (!confirm(`האם למחוק את הענף "${branch.name}"?`)) return;
 
-    const { error } = await supabase
-      .from('branches')
-      .delete()
-      .eq('id', branch.id);
-
-    if (error) {
-      if (error.message.includes('foreign key')) {
-        toast.error('לא ניתן למחוק ענף שמשויכים אליו עובדים');
-      } else {
-        toast.error('שגיאה במחיקת הענף');
-      }
-    } else {
+    try {
+      await deleteDoc(doc(db, 'branches', branch.id));
       toast.success('הענף נמחק בהצלחה');
       fetchBranches();
+    } catch (e) {
+      toast.error('שגיאה במחיקת הענף. ייתכן שיש עובדים המשויכים לענף זה.');
     }
   };
 
