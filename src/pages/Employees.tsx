@@ -301,8 +301,7 @@ export default function Employees() {
     'row_linkedin',
     'row_revolving_door',
     'row_unit_criticality',
-    'row_attrition_risk_unit',
-    'row_leaving_reason',
+    'row_risk_reason_unit',
     'row_attrition_reason',
     'row_replacement_needed',
     'row_retention_plan',
@@ -1108,28 +1107,46 @@ export default function Employees() {
       ),
     },
     {
-      id: 'row_attrition_risk_unit',
-      label: 'סיכוי לעזוב - לדעת היחידה',
+      id: 'row_risk_reason_unit',
+      label: 'סיכוי וסיבת עזיבה - יחידה',
       isManagerOnly: true,
       component: (
-        <div className="space-y-2 text-right">
-          <Label htmlFor="attrition_risk">סיכוי לעזוב - לדעת היחידה (0-5)</Label>
-          <Select
-            value={formData.attrition_risk}
-            onValueChange={(value) => setFormData({ ...formData, attrition_risk: value })}
-          >
-            <SelectTrigger className="text-right">
-              <SelectValue placeholder="בחר רמת סיכוי" />
-            </SelectTrigger>
-            <SelectContent dir="rtl">
-              <SelectItem value="0" className="text-right">0 - בטוח נשאר</SelectItem>
-              <SelectItem value="1" className="text-right">1 - סיכוי קטן מאוד לעזיבה</SelectItem>
-              <SelectItem value="2" className="text-right">2 - סיכוי קטן לעזיבה</SelectItem>
-              <SelectItem value="3" className="text-right">3 - סיכוי סביר לעזיבה</SelectItem>
-              <SelectItem value="4" className="text-right">4 - סיכוי גבוה לעזיבה</SelectItem>
-              <SelectItem value="5" className="text-right">5 - בטוח יעזוב</SelectItem>
-            </SelectContent>
-          </Select>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2 text-right">
+            <Label htmlFor="attrition_risk">סיכוי לעזוב - לדעת היחידה (0-5)</Label>
+            <Select
+              value={formData.attrition_risk}
+              onValueChange={(value) => setFormData({ ...formData, attrition_risk: value })}
+            >
+              <SelectTrigger className="text-right">
+                <SelectValue placeholder="בחר רמת סיכוי" />
+              </SelectTrigger>
+              <SelectContent dir="rtl">
+                <SelectItem value="0" className="text-right">0 - בטוח נשאר</SelectItem>
+                <SelectItem value="1" className="text-right">1 - סיכוי קטן מאוד לעזיבה</SelectItem>
+                <SelectItem value="2" className="text-right">2 - סיכוי קטן לעזיבה</SelectItem>
+                <SelectItem value="3" className="text-right">3 - סיכוי סביר לעזיבה</SelectItem>
+                <SelectItem value="4" className="text-right">4 - סיכוי גבוה לעזיבה</SelectItem>
+                <SelectItem value="5" className="text-right">5 - בטוח יעזוב</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2 text-right">
+            <Label htmlFor="leaving_reason_id">סיבת רצון לעזוב - קטגוריות</Label>
+            <Select
+              value={formData.leaving_reason_id}
+              onValueChange={(value) => setFormData({ ...formData, leaving_reason_id: value })}
+            >
+              <SelectTrigger className="text-right">
+                <SelectValue placeholder="בחר סיבה" />
+              </SelectTrigger>
+              <SelectContent>
+                {leavingReasons.map((reason) => (
+                  <SelectItem key={reason.id} value={reason.id} className="text-right">{reason.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       ),
     },
@@ -1297,29 +1314,7 @@ export default function Employees() {
         </div>
       ),
     },
-    {
-      id: 'row_leaving_reason',
-      label: 'סיבת רצון לעזוב - קטגוריות',
-      isManagerOnly: true,
-      component: (
-        <div className="space-y-2 text-right">
-          <Label htmlFor="leaving_reason_id">סיבת רצון לעזוב - קטגוריות</Label>
-          <Select
-            value={formData.leaving_reason_id}
-            onValueChange={(value) => setFormData({ ...formData, leaving_reason_id: value })}
-          >
-            <SelectTrigger className="text-right">
-              <SelectValue placeholder="בחר סיבה" />
-            </SelectTrigger>
-            <SelectContent>
-              {leavingReasons.map((reason) => (
-                <SelectItem key={reason.id} value={reason.id} className="text-right">{reason.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-      ),
-    },
+
     {
       id: 'row_salary_estimates',
       label: 'הערכות שכר',
@@ -1554,17 +1549,27 @@ export default function Employees() {
       ),
     },
     {
-      id: 'row_attrition_risk_unit',
-      label: 'סיכוי לעזוב - לדעת היחידה',
+      id: 'row_risk_reason_unit',
+      label: 'סיכוי וסיבת עזיבה - יחידה',
       isManagerOnly: true,
       component: (
-        <div className="space-y-2 text-right">
-          <Label>סיכוי לעזוב - לדעת היחידה (0-5)</Label>
-          <Input
-            className="text-right bg-muted"
-            value={selectedEmployee?.attrition_risk?.toString() ?? '-'}
-            disabled
-          />
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2 text-right">
+            <Label>סיכוי לעזוב - לדעת היחידה (0-5)</Label>
+            <Input
+              className="text-right bg-muted"
+              value={selectedEmployee?.attrition_risk?.toString() ?? '-'}
+              disabled
+            />
+          </div>
+          <div className="space-y-2 text-right">
+            <Label>סיבת רצון לעזוב - קטגוריות</Label>
+            <Input
+              className="text-right bg-muted"
+              value={getLeavingReasonName(selectedEmployee?.leaving_reason_id)}
+              disabled
+            />
+          </div>
         </div>
       ),
     },
@@ -1708,21 +1713,7 @@ export default function Employees() {
         </div>
       ),
     },
-    {
-      id: 'row_leaving_reason',
-      label: 'סיבת רצון לעזוב - קטגוריות',
-      isManagerOnly: true,
-      component: (
-        <div className="space-y-2 text-right">
-          <Label>סיבת רצון לעזוב - קטגוריות</Label>
-          <Input
-            className="text-right bg-muted"
-            value={getLeavingReasonName(selectedEmployee?.leaving_reason_id)}
-            disabled
-          />
-        </div>
-      ),
-    },
+
     {
       id: 'row_salary_estimates',
       label: 'הערכות שכר',
@@ -1775,8 +1766,7 @@ export default function Employees() {
 
     const retentionCommandersRows = [
       'row_unit_criticality',
-      'row_attrition_risk_unit',
-      'row_leaving_reason',
+      'row_risk_reason_unit',
       'row_attrition_reason',
       'row_replacement_needed',
       'row_retention_plan'
