@@ -44,8 +44,10 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Loader2, Filter, X, Users, Eye, Edit, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Settings2 } from 'lucide-react';
+import { Loader2, Filter, X, Users, Eye, Edit, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Settings2, RotateCcw, Move } from 'lucide-react';
 import { toast } from 'sonner';
+import { useFormFieldOrder } from '@/hooks/useFormFieldOrder';
+import { DraggableFormContainer } from '@/components/employees/DraggableFormContainer';
 
 const criticalityLabels: Record<string, string> = {
     '0': '0 - אינו חשוב לארגון',
@@ -73,6 +75,13 @@ const getCriticalityLabel = (val: number | null | undefined): string => {
 const getAttritionRiskLabel = (val: number | null | undefined): string => {
     if (val === null || val === undefined) return 'לא מוגדר';
     return attritionRiskLabels[val.toString()] || val.toString();
+};
+
+const formatToHebrewNumber = (val: number | string | null | undefined) => {
+    if (val === null || val === undefined || val === '') return '';
+    const num = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val;
+    if (isNaN(num)) return '';
+    return Math.round(num).toLocaleString('he-IL');
 };
 
 interface Employee {
@@ -120,8 +129,8 @@ export default function MovingSouth() {
     const [loading, setLoading] = useState(true);
     const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
     const [projects, setProjects] = useState<NamedEntity[]>([]);
-    const [roles, setRoles] = useState<NamedEntity[]>([]);
-    const [companies, setCompanies] = useState<NamedEntity[]>([]);
+    const [jobRoles, setJobRoles] = useState<NamedEntity[]>([]);
+    const [employingCompanies, setEmployingCompanies] = useState<NamedEntity[]>([]);
     const [branches, setBranches] = useState<NamedEntity[]>([]);
     const [seniorityLevels, setSeniorityLevels] = useState<NamedEntity[]>([]);
     const [leavingReasons, setLeavingReasons] = useState<NamedEntity[]>([]);
@@ -135,12 +144,71 @@ export default function MovingSouth() {
     const [movingSouthFilterAttritionRisk, setMovingSouthFilterAttritionRisk] = useState('all');
     const [movingSouthFilterReplacement, setMovingSouthFilterReplacement] = useState('all');
     const [movingSouthSortConfig, setMovingSouthSortConfig] = useState<{ key: string; direction: 'asc' | 'desc' } | null>({ key: 'attentionScore', direction: 'desc' });
-
-    // Dialog states
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
-    const [isEmployeeDetailDialogOpen, setIsEmployeeDetailDialogOpen] = useState(false);
+    const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-    const [editFormData, setEditFormData] = useState<Partial<Employee>>({});
+    const [formLoading, setFormLoading] = useState(false);
+    const [isDragMode, setIsDragMode] = useState(false);
+    const [activeTab, setActiveTab] = useState('general');
+
+    const { isSuperAdmin } = useAuth();
+
+    // Default field order for the form
+    const defaultFieldOrder = useMemo(() => [
+        'row_fullname_jobrole',
+        'row_project_branch',
+        'row_company_experience',
+        'row_city_startdate',
+        'row_birthdate_phone',
+        'row_emergency_phone',
+        'row_seniority',
+        'row_linkedin',
+        'row_revolving_door',
+        'row_unit_criticality',
+        'row_risk_reason_unit',
+        'row_attrition_reason',
+        'row_retention_plan',
+        'row_replacement_needed',
+        'row_attrition_risk_company',
+        'row_company_retention_plan',
+        'row_cost',
+        'row_salary_estimates',
+        'row_salary_percentage_date',
+        'row_performance_combined',
+    ], []);
+
+    const { fieldOrder, updateOrder, resetOrder, isLoading: isFieldOrderLoading } = useFormFieldOrder('employee_form', defaultFieldOrder);
+
+    const [formData, setFormData] = useState<any>({
+        full_name: '',
+        job_role_id: '',
+        professional_experience_years: 0,
+        project_id: '',
+        city: '',
+        start_date: '',
+        birth_date: '',
+        cost: '',
+        employing_company_id: '',
+        branch_id: '',
+        phone: '',
+        emergency_phone: '',
+        seniority_level_id: '',
+        attrition_risk: '',
+        attrition_risk_reason: '',
+        unit_criticality: '',
+        salary_raise_date: '',
+        salary_raise_percentage: '',
+        linkedin_url: '',
+        real_market_salary: '',
+        revolving_door: '',
+        our_sourcing: '',
+        leaving_reason_id: '',
+        retention_plan: '',
+        company_retention_plan: '',
+        company_attrition_risk: '',
+        performance_level_id: '',
+        performance_update_date: '',
+    });
 
 
     const movingSouthColumnsConfig = [
@@ -194,8 +262,8 @@ export default function MovingSouth() {
 
             setAllEmployees(mapDocs(employeesRes));
             setProjects(mapDocs(projectsRes));
-            setRoles(mapDocs(rolesRes));
-            setCompanies(mapDocs(companiesRes));
+            setJobRoles(mapDocs(rolesRes));
+            setEmployingCompanies(mapDocs(companiesRes));
             setBranches(mapDocs(branchesRes));
             setSeniorityLevels(mapDocs(seniorityRes));
             setLeavingReasons(mapDocs(leavingReasonsRes));
@@ -208,24 +276,62 @@ export default function MovingSouth() {
         }
     };
 
-    const formatToHebrewNumber = (val: number | string | null | undefined) => {
-        if (val === null || val === undefined || val === '') return '';
-        const num = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val;
-        if (isNaN(num)) return '';
-        return Math.round(num).toLocaleString('he-IL');
+    const getLeavingReasonName = (reasonId: string | null | undefined) => {
+        if (!reasonId) return '-';
+        const reason = leavingReasons.find(r => r.id === reasonId);
+        return reason?.name || '-';
     };
 
-    const getLeavingReasonName = (id: string | null | undefined) => {
-        if (!id) return '-';
-        return leavingReasons.find(r => r.id === id)?.name || '-';
+    const getPerformanceLevelName = (levelId: string | null | undefined) => {
+        if (!levelId) return '-';
+        const level = performanceLevels.find(l => l.id === levelId);
+        return level?.name || '-';
     };
 
+    const getRoleName = (roleId: string | null) => {
+        if (!roleId) return '-';
+        const role = jobRoles.find(r => r.id === roleId);
+        return role?.name || '-';
+    };
+
+    const getProjectName = (projectId: string | null) => {
+        if (!projectId) return '-';
+        const project = projects.find(p => p.id === projectId);
+        return project?.name || '-';
+    };
+
+    const getBranchName = (branchId: string | null | undefined) => {
+        if (!branchId) return '-';
+        const branch = branches.find(b => b.id === branchId);
+        return branch?.name || '-';
+    };
+
+    const getEmployingCompanyName = (companyId: string | null | undefined) => {
+        if (!companyId) return '-';
+        const company = employingCompanies.find(c => c.id === companyId);
+        return company?.name || '-';
+    };
+
+    const getSeniorityLevelName = (levelId: string | null | undefined) => {
+        if (!levelId) return '-';
+        const level = seniorityLevels.find(s => s.id === levelId);
+        return level?.name || '-';
+    };
+
+    const getOrganizationExperienceYears = (startDate: string) => {
+        if (!startDate) return 0;
+        const start = new Date(startDate);
+        const today = new Date();
+        const diffTime = today.getTime() - start.getTime();
+        const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365.25);
+        return Math.max(0, Math.round(diffYears * 10) / 10);
+    };
 
     const movingSouthTableData = useMemo(() => {
         let data = allEmployees
             .map((emp) => ({
                 ...emp,
-                roleName: roles.find((r) => r.id === emp.job_role_id)?.name || 'לא מוגדר',
+                roleName: jobRoles.find((r) => r.id === emp.job_role_id)?.name || 'לא מוגדר',
                 branchName: branches.find((b) => b.id === emp.branch_id)?.name || 'לא מוגדר',
                 projectName: projects.find((p) => p.id === emp.project_id)?.name || 'לא משויך',
                 leavingReasonName: leavingReasons.find((r) => r.id === emp.leaving_reason_id)?.name || 'לא מוגדר',
@@ -279,7 +385,7 @@ export default function MovingSouth() {
         }
 
         return data;
-    }, [allEmployees, roles, branches, projects, leavingReasons, movingSouthSearch, movingSouthSortConfig, movingSouthFilterProject, movingSouthFilterBranch, movingSouthFilterCriticality, movingSouthFilterAttritionRisk, movingSouthFilterReplacement]);
+    }, [allEmployees, jobRoles, branches, projects, leavingReasons, movingSouthSearch, movingSouthSortConfig, movingSouthFilterProject, movingSouthFilterBranch, movingSouthFilterCriticality, movingSouthFilterAttritionRisk, movingSouthFilterReplacement]);
 
     const toggleSort = (key: string) => {
         setMovingSouthSortConfig(prev => {
@@ -316,29 +422,1188 @@ export default function MovingSouth() {
 
     const openEmployeeDetailDialog = (employee: Employee) => {
         setSelectedEmployee(employee);
-        setIsEmployeeDetailDialogOpen(true);
+        setIsViewDialogOpen(true);
     };
 
     const handleOpenEdit = (emp: Employee) => {
-        setEditFormData(emp);
+        setSelectedEmployee(emp);
+        setFormData({
+            ...emp,
+            cost: emp.cost?.toString() || '',
+            attrition_risk: emp.attrition_risk?.toString() || '',
+            unit_criticality: emp.unit_criticality?.toString() || '',
+            company_attrition_risk: emp.company_attrition_risk?.toString() || '',
+            salary_raise_percentage: emp.salary_raise_percentage?.toString() || '',
+            revolving_door: emp.revolving_door?.toString() || '',
+            our_sourcing: emp.our_sourcing?.toString() || '',
+        });
         setIsEditDialogOpen(true);
     };
 
     const handleUpdateEmployee = async () => {
-        if (!editFormData.id) return;
+        if (!formData.id) return;
+        setFormLoading(true);
         try {
-            const empRef = doc(db, 'employees', editFormData.id);
-            const { id, roleName, branchName, projectName, leavingReasonName, attentionScore, ...updateData } = editFormData as any;
+            const empRef = doc(db, 'employees', formData.id);
+            const updateData = {
+                ...formData,
+                cost: formData.cost ? parseFloat(formData.cost.toString().replace(/,/g, '')) : null,
+                attrition_risk: formData.attrition_risk ? parseInt(formData.attrition_risk) : null,
+                unit_criticality: formData.unit_criticality ? parseInt(formData.unit_criticality) : null,
+                company_attrition_risk: formData.company_attrition_risk ? parseInt(formData.company_attrition_risk) : null,
+                salary_raise_percentage: formData.salary_raise_percentage ? parseFloat(formData.salary_raise_percentage) : null,
+                revolving_door: formData.revolving_door === 'true',
+                our_sourcing: formData.our_sourcing === 'true',
+                updated_at: new Date().toISOString()
+            };
+
+            // Remove helper fields that shouldn't be in Firestore
+            delete (updateData as any).roleName;
+            delete (updateData as any).branchName;
+            delete (updateData as any).projectName;
+            delete (updateData as any).leavingReasonName;
+            delete (updateData as any).attentionScore;
+
             await updateDoc(empRef, updateData);
-            setAllEmployees(prev => prev.map(e => e.id === editFormData.id ? { ...e, ...updateData } : e));
+            setAllEmployees(prev => prev.map(e => e.id === formData.id ? { ...e, ...updateData } : e));
             setIsEditDialogOpen(false);
             toast.success('נתוני העובד עודכנו בהצלחה');
         } catch (error) {
             console.error('Error updating employee:', error);
             toast.error('שגיאה בעדכון נתוני העובד');
+        } finally {
+            setFormLoading(false);
         }
     };
 
+    const formFields = useMemo(() => [
+        {
+            id: 'row_fullname_jobrole',
+            label: 'שם מלא ותפקיד',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="full_name">שם מלא *</Label>
+                        <Input
+                            id="full_name"
+                            className="text-right"
+                            value={formData.full_name}
+                            onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="job_role">תפקיד</Label>
+                        <Select
+                            value={formData.job_role_id}
+                            onValueChange={(value) => setFormData({ ...formData, job_role_id: value })}
+                        >
+                            <SelectTrigger className="text-right">
+                                <SelectValue placeholder="בחר תפקיד" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {jobRoles.map((role) => (
+                                    <SelectItem key={role.id} value={role.id} className="text-right">{role.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_project_branch',
+            label: 'תכנית וענף',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="project">תכנית</Label>
+                        <Select
+                            value={formData.project_id}
+                            onValueChange={(value) => setFormData({ ...formData, project_id: value })}
+                        >
+                            <SelectTrigger className="text-right">
+                                <SelectValue placeholder="בחר תכנית" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {projects.map((project) => (
+                                    <SelectItem key={project.id} value={project.id} className="text-right">{project.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="branch_id">ענף *</Label>
+                        <Select
+                            value={formData.branch_id}
+                            onValueChange={(value) => setFormData({ ...formData, branch_id: value })}
+                        >
+                            <SelectTrigger className="text-right">
+                                <SelectValue placeholder="בחר ענף" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {branches.map((branch) => (
+                                    <SelectItem key={branch.id} value={branch.id} className="text-right">{branch.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_company_experience',
+            label: 'חברה מעסיקה וותק',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="employing_company_id">חברה מעסיקה</Label>
+                        <Select
+                            value={formData.employing_company_id}
+                            onValueChange={(value) => setFormData({ ...formData, employing_company_id: value })}
+                        >
+                            <SelectTrigger className="text-right">
+                                <SelectValue placeholder="בחר חברה מעסיקה" />
+                            </SelectTrigger>
+                            <SelectContent drop-shadow-lg>
+                                {employingCompanies.map((company) => (
+                                    <SelectItem key={company.id} value={company.id} className="text-right">{company.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="professional_exp">ותק במקצוע (שנים)</Label>
+                        <Input
+                            id="professional_exp"
+                            className="text-right"
+                            type="number"
+                            min="0"
+                            value={formData.professional_experience_years}
+                            onChange={(e) => setFormData({ ...formData, professional_experience_years: parseInt(e.target.value) || 0 })}
+                            dir="ltr"
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_city_startdate',
+            label: 'עיר ותאריך התחלה',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="city">עיר מגורים</Label>
+                        <Input
+                            id="city"
+                            className="text-right"
+                            value={formData.city}
+                            onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="start_date">תאריך תחילת עבודה ביחידה *</Label>
+                        <Input
+                            id="start_date"
+                            type="date"
+                            value={formData.start_date}
+                            onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+                            dir="ltr"
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_birthdate_phone',
+            label: 'תאריך לידה וטלפון',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="birth_date">תאריך לידה</Label>
+                        <Input
+                            id="birth_date"
+                            type="date"
+                            value={formData.birth_date}
+                            onChange={(e) => setFormData({ ...formData, birth_date: e.target.value })}
+                            dir="ltr"
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="phone">מספר טלפון</Label>
+                        <Input
+                            id="phone"
+                            type="tel"
+                            value={formData.phone}
+                            onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                            dir="ltr"
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_emergency_phone',
+            label: 'טלפון חירום',
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="emergency_phone">טלפון חירום</Label>
+                    <Input
+                        id="emergency_phone"
+                        type="tel"
+                        value={formData.emergency_phone}
+                        onChange={(e) => setFormData({ ...formData, emergency_phone: e.target.value })}
+                        dir="ltr"
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_performance_combined',
+            label: 'ביצועים ועדכון',
+            isManagerOnly: true,
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="performance_level_id">ביצועי העובד</Label>
+                        <Select
+                            value={formData.performance_level_id || ''}
+                            onValueChange={(value) => setFormData({
+                                ...formData,
+                                performance_level_id: value,
+                                performance_update_date: new Date().toISOString().split('T')[0]
+                            })}
+                        >
+                            <SelectTrigger className="text-right" dir="rtl">
+                                <SelectValue placeholder="בחר רמת ביצועים" />
+                            </SelectTrigger>
+                            <SelectContent drop-shadow-lg>
+                                {performanceLevels.map((level) => (
+                                    <SelectItem key={level.id} value={level.id} className="text-right">{level.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="performance_update_date">תאריך עדכון ביצועים</Label>
+                        <Input
+                            id="performance_update_date"
+                            className="text-right bg-muted"
+                            value={formData.performance_update_date ? new Date(formData.performance_update_date).toLocaleDateString('he-IL') : 'טרם עודכן'}
+                            disabled
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_seniority',
+            label: 'סניוריטי',
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="seniority_level_id">סניוריטי</Label>
+                    <Select
+                        value={formData.seniority_level_id}
+                        onValueChange={(value) => setFormData({ ...formData, seniority_level_id: value })}
+                    >
+                        <SelectTrigger className="text-right">
+                            <SelectValue placeholder="בחר רמת ותק" />
+                        </SelectTrigger>
+                        <SelectContent drop-shadow-lg>
+                            {seniorityLevels.map((level) => (
+                                <SelectItem key={level.id} value={level.id} className="text-right">{level.name}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            ),
+        },
+        {
+            id: 'row_cost',
+            label: 'עלות',
+            isManagerOnly: true,
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="cost">עלות העובד בחודש (₪) - כולל מע"מ</Label>
+                        <Input
+                            id="cost"
+                            type="text"
+                            value={formData.cost ? formatToHebrewNumber(formData.cost) : ''}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(/[^\d]/g, '');
+                                setFormData({ ...formData, cost: val });
+                            }}
+                            className="text-right"
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_unit_criticality',
+            label: 'קריטיות ליחידה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="unit_criticality">קריטיות ליחידה (0-5)</Label>
+                    <Select
+                        value={formData.unit_criticality}
+                        onValueChange={(value) => setFormData({ ...formData, unit_criticality: value })}
+                    >
+                        <SelectTrigger className="text-right">
+                            <SelectValue placeholder="בחר רמת קריטיות" />
+                        </SelectTrigger>
+                        <SelectContent dir="rtl" drop-shadow-lg>
+                            <SelectItem value="0" className="text-right">0 - אינו חשוב לארגון</SelectItem>
+                            <SelectItem value="1" className="text-right">1 - די חשוב לארגון</SelectItem>
+                            <SelectItem value="2" className="text-right">2 - חשוב לארגון</SelectItem>
+                            <SelectItem value="3" className="text-right">3 - חשוב מאוד לארגון</SelectItem>
+                            <SelectItem value="4" className="text-right">4 - קריטי לארגון</SelectItem>
+                            <SelectItem value="5" className="text-right">5 - קריטי מאוד לארגון</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            ),
+        },
+        {
+            id: 'row_attrition_risk_company',
+            label: 'סיכוי לעזוב - לדעת החברה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="company_attrition_risk">סיכוי לעזוב - לדעת החברה (0-5)</Label>
+                    <Select
+                        value={formData.company_attrition_risk}
+                        onValueChange={(value) => setFormData({ ...formData, company_attrition_risk: value })}
+                    >
+                        <SelectTrigger className="text-right" dir="rtl">
+                            <SelectValue placeholder="בחר רמת סיכוי" />
+                        </SelectTrigger>
+                        <SelectContent dir="rtl" drop-shadow-lg>
+                            <SelectItem value="0" className="text-right">0 - בטוח נשאר</SelectItem>
+                            <SelectItem value="1" className="text-right">1 - סיכוי קטן מאוד לעזיבה</SelectItem>
+                            <SelectItem value="2" className="text-right">2 - סיכוי קטן לעזיבה</SelectItem>
+                            <SelectItem value="3" className="text-right">3 - סיכוי סביר לעזיבה</SelectItem>
+                            <SelectItem value="4" className="text-right">4 - סיכוי גבוה לעזיבה</SelectItem>
+                            <SelectItem value="5" className="text-right">5 - בטוח יעזוב</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            ),
+        },
+        {
+            id: 'row_risk_reason_unit',
+            label: 'סיכוי וסיבת עזיבה - יחידה',
+            isManagerOnly: true,
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="attrition_risk">סיכוי לעזוב - לדעת היחידה (0-5)</Label>
+                        <Select
+                            value={formData.attrition_risk}
+                            onValueChange={(value) => setFormData({ ...formData, attrition_risk: value })}
+                        >
+                            <SelectTrigger className="text-right" dir="rtl">
+                                <SelectValue placeholder="בחר רמת סיכוי" />
+                            </SelectTrigger>
+                            <SelectContent dir="rtl" drop-shadow-lg>
+                                <SelectItem value="0" className="text-right">0 - בטוח נשאר</SelectItem>
+                                <SelectItem value="1" className="text-right">1 - סיכוי קטן מאוד לעזיבה</SelectItem>
+                                <SelectItem value="2" className="text-right">2 - סיכוי קטן לעזיבה</SelectItem>
+                                <SelectItem value="3" className="text-right">3 - סיכוי סביר לעזיבה</SelectItem>
+                                <SelectItem value="4" className="text-right">4 - סיכוי גבוה לעזיבה</SelectItem>
+                                <SelectItem value="5" className="text-right">5 - בטוח יעזוב</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="leaving_reason_id">סיבת רצון לעזוב - קטגוריות</Label>
+                        <Select
+                            value={formData.leaving_reason_id}
+                            onValueChange={(value) => setFormData({ ...formData, leaving_reason_id: value })}
+                        >
+                            <SelectTrigger className="text-right" dir="rtl">
+                                <SelectValue placeholder="בחר סיבה" />
+                            </SelectTrigger>
+                            <SelectContent drop-shadow-lg>
+                                {leavingReasons.map((reason) => (
+                                    <SelectItem key={reason.id} value={reason.id} className="text-right">{reason.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_attrition_reason',
+            label: 'סיבת רצון לעזוב - מלל חופשי',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="attrition_risk_reason">סיבת רצון לעזוב - מלל חופשי</Label>
+                    <Input
+                        id="attrition_risk_reason"
+                        className="text-right"
+                        value={formData.attrition_risk_reason}
+                        onChange={(e) => setFormData({ ...formData, attrition_risk_reason: e.target.value })}
+                        placeholder="הזן סיבה..."
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_retention_plan',
+            label: 'תכנית שימור - מבחינת היחידה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="retention_plan">תכנית שימור - מבחינת היחידה</Label>
+                    <Input
+                        id="retention_plan"
+                        className="text-right"
+                        value={formData.retention_plan}
+                        onChange={(e) => setFormData({ ...formData, retention_plan: e.target.value })}
+                        placeholder="הזן תכנית שימור..."
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_replacement_needed',
+            label: 'לגייס במקומו?',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="replacement_needed">לגייס במקומו?</Label>
+                    <Select
+                        value={formData.replacement_needed}
+                        onValueChange={(value) => setFormData({ ...formData, replacement_needed: value })}
+                    >
+                        <SelectTrigger className="text-right" dir="rtl">
+                            <SelectValue placeholder="בחר אפשרות" />
+                        </SelectTrigger>
+                        <SelectContent dir="rtl" drop-shadow-lg>
+                            <SelectItem value="כן" className="text-right">כן</SelectItem>
+                            <SelectItem value="לא" className="text-right">לא</SelectItem>
+                            <SelectItem value="טרם הוחלט" className="text-right">טרם הוחלט</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
+            ),
+        },
+        {
+            id: 'row_company_retention_plan',
+            label: 'התיחסות חברה למעבר דרומה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="company_retention_plan">התיחסות חברה למעבר דרומה</Label>
+                    <Input
+                        id="company_retention_plan"
+                        className="text-right"
+                        value={formData.company_retention_plan}
+                        onChange={(e) => setFormData({ ...formData, company_retention_plan: e.target.value })}
+                        placeholder="הזן התיחסות..."
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_salary_percentage_date',
+            label: 'תאריך ואחוז העלאת שכר',
+            isManagerOnly: true,
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="salary_raise_date">תאריך העלאת שכר</Label>
+                        <Input
+                            id="salary_raise_date"
+                            type="date"
+                            value={formData.salary_raise_date}
+                            onChange={(e) => setFormData({ ...formData, salary_raise_date: e.target.value })}
+                            className="text-right"
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="salary_raise_percentage">אחוז העלאת שכר (%)</Label>
+                        <Input
+                            id="salary_raise_percentage"
+                            type="text"
+                            value={formData.salary_raise_percentage ? formatToHebrewNumber(formData.salary_raise_percentage) : ''}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(/[^\d]/g, '');
+                                setFormData({ ...formData, salary_raise_percentage: val });
+                            }}
+                            className="text-right"
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_linkedin',
+            label: 'קישור ללינקדאין',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right col-span-2">
+                        <Label htmlFor="linkedin_url">קישור ללינקדאין</Label>
+                        <Input
+                            id="linkedin_url"
+                            type="url"
+                            maxLength={200}
+                            className="text-right"
+                            placeholder="https://linkedin.com/in/..."
+                            value={formData.linkedin_url}
+                            onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_revolving_door',
+            label: 'דלת מסתובבת ואיתור',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="our_sourcing">איתור שלנו?</Label>
+                        <Select
+                            value={formData.our_sourcing}
+                            onValueChange={(value) => setFormData({ ...formData, our_sourcing: value })}
+                        >
+                            <SelectTrigger className="text-right">
+                                <SelectValue placeholder="בחר" />
+                            </SelectTrigger>
+                            <SelectContent drop-shadow-lg>
+                                <SelectItem value="true" className="text-right">כן</SelectItem>
+                                <SelectItem value="false" className="text-right">לא</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="revolving_door">דלת מסתובבת</Label>
+                        <Select
+                            value={formData.revolving_door}
+                            onValueChange={(value) => setFormData({ ...formData, revolving_door: value })}
+                        >
+                            <SelectTrigger className="text-right">
+                                <SelectValue placeholder="בחר" />
+                            </SelectTrigger>
+                            <SelectContent drop-shadow-lg>
+                                <SelectItem value="true" className="text-right">כן</SelectItem>
+                                <SelectItem value="false" className="text-right">לא</SelectItem>
+                            </SelectContent>
+                        </Select>
+                    </div>
+                </div>
+            ),
+        },
+
+        {
+            id: 'row_salary_estimates',
+            label: 'הערכות שכר',
+            isSuperAdminOnly: true,
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>שכר חודשי משוער (₪)</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={formData.cost ? `₪${formatToHebrewNumber(Math.round(parseFloat(formData.cost) / 1.4 / 1.1 / 1.18))}` : '-'}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="real_market_salary">שכר חודשי ריאלי בשוק (₪)</Label>
+                        <Input
+                            id="real_market_salary"
+                            type="text"
+                            value={formData.real_market_salary ? formatToHebrewNumber(formData.real_market_salary) : ''}
+                            onChange={(e) => {
+                                const val = e.target.value.replace(/[^\d]/g, '');
+                                setFormData({ ...formData, real_market_salary: val });
+                            }}
+                            className="text-right"
+                        />
+                    </div>
+                </div>
+            ),
+        },
+    ], [formData, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, performanceLevels]);
+
+    const viewFormFields = useMemo(() => [
+        {
+            id: 'row_fullname_jobrole',
+            label: 'שם מלא ותפקיד',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>שם מלא</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.full_name || ''}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>תפקיד</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={getRoleName(selectedEmployee?.job_role_id || null)}
+                            disabled
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_project_branch',
+            label: 'תכנית וענף',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>תכנית</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={getProjectName(selectedEmployee?.project_id || null)}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>ענף</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={getBranchName(selectedEmployee?.branch_id)}
+                            disabled
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_company_experience',
+            label: 'חברה מעסיקה וותק',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>חברה מעסיקה</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={getEmployingCompanyName(selectedEmployee?.employing_company_id)}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>ותק במקצוע (שנים)</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.professional_experience_years?.toString() || '0'}
+                            disabled
+                            dir="ltr"
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_city_startdate',
+            label: 'עיר ותאריך התחלה',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>עיר מגורים</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.city || '-'}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>תאריך תחילת עבודה ביחידה</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.start_date ? new Date(selectedEmployee.start_date).toLocaleDateString('he-IL') : '-'}
+                            disabled
+                            dir="ltr"
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_birthdate_phone',
+            label: 'תאריך לידה וטלפון',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>תאריך לידה</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.birth_date ? new Date(selectedEmployee.birth_date).toLocaleDateString('he-IL') : '-'}
+                            disabled
+                            dir="ltr"
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>מספר טלפון</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.phone || '-'}
+                            disabled
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_emergency_phone',
+            label: 'טלפון חירום',
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>טלפון חירום</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={selectedEmployee?.emergency_phone || '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_performance_combined',
+            label: 'ביצועים ועדכון',
+            isManagerOnly: true,
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>ביצועי העובד</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={getPerformanceLevelName(selectedEmployee?.performance_level_id)}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>תאריך עדכון ביצועים</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.performance_update_date ? new Date(selectedEmployee.performance_update_date).toLocaleDateString('he-IL') : '-'}
+                            disabled
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_seniority',
+            label: 'סניוריטי',
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>סניוריטי</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={getSeniorityLevelName(selectedEmployee?.seniority_level_id)}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_cost',
+            label: 'עלות',
+            isManagerOnly: true,
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>עלות העובד בחודש (₪) - כולל מע"מ</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.cost ? `₪${formatToHebrewNumber(selectedEmployee.cost)}` : '-'}
+                            disabled
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_unit_criticality',
+            label: 'קריטיות ליחידה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>קריטיות ליחידה (0-5)</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={selectedEmployee?.unit_criticality != null ? `${selectedEmployee.unit_criticality}${selectedEmployee.unit_criticality === 1 ? ' - די חשוב לארגון' : selectedEmployee.unit_criticality === 2 ? ' - חשוב לארגון' : selectedEmployee.unit_criticality === 3 ? ' - חשוב מאוד לארגון' : selectedEmployee.unit_criticality === 4 ? ' - קריטי לארגון' : selectedEmployee.unit_criticality === 5 ? ' - קריטי מאוד לארגון' : ''}` : '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_attrition_risk_company',
+            label: 'סיכוי לעזוב - לדעת החברה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>סיכוי לעזוב - לדעת החברה (0-5)</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={selectedEmployee?.company_attrition_risk?.toString() ?? '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_risk_reason_unit',
+            label: 'סיכוי וסיבת עזיבה - יחידה',
+            isManagerOnly: true,
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>סיכוי לעזוב - לדעת היחידה (0-5)</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.attrition_risk?.toString() ?? '-'}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>סיבת רצון לעזוב - קטגוריות</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={getLeavingReasonName(selectedEmployee?.leaving_reason_id)}
+                            disabled
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_attrition_reason',
+            label: 'סיבת רצון לעזוב - מלל חופשי',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>סיבת רצון לעזוב - מלל חופשי</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={selectedEmployee?.attrition_risk_reason || '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_retention_plan',
+            label: 'תכנית שימור - מבחינת היחידה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>תכנית שימור - מבחינת היחידה</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={selectedEmployee?.retention_plan || '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_replacement_needed',
+            label: 'לגייס במקומו?',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>לגייס במקומו?</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={(selectedEmployee as any)?.replacement_needed || '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_company_retention_plan',
+            label: 'התיחסות חברה למעבר דרומה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>התיחסות חברה למעבר דרומה</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={(selectedEmployee as any)?.company_retention_plan || '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_salary_percentage_date',
+            label: 'תאריך ואחוז העלאת שכר',
+            isManagerOnly: true,
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>תאריך העלאת שכר</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.salary_raise_date ? new Date(selectedEmployee.salary_raise_date).toLocaleDateString('he-IL') : '-'}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>אחוז העלאת שכר (%)</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.salary_raise_percentage ? `${formatToHebrewNumber(selectedEmployee.salary_raise_percentage)}%` : '-'}
+                            disabled
+                        />
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_linkedin',
+            label: 'קישור ללינקדאין',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right col-span-2">
+                        <Label>קישור ללינקדאין</Label>
+                        {selectedEmployee?.linkedin_url ? (
+                            <a
+                                href={selectedEmployee.linkedin_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="block p-2 bg-muted rounded-md text-right text-primary hover:underline"
+                            >
+                                {selectedEmployee.linkedin_url}
+                            </a>
+                        ) : (
+                            <Input
+                                className="text-right bg-muted"
+                                value="-"
+                                disabled
+                            />
+                        )}
+                    </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_revolving_door',
+            label: 'דלת מסתובבת ואיתור',
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>איתור שלנו?</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.our_sourcing === true ? 'כן' : selectedEmployee?.our_sourcing === false ? 'לא' : '-'}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>דלת מסתובבת</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.revolving_door === true ? 'כן' : selectedEmployee?.revolving_door === false ? 'לא' : '-'}
+                            disabled
+                        />
+                    </div>
+                </div>
+            ),
+        },
+
+        {
+            id: 'row_salary_estimates',
+            label: 'הערכות שכר',
+            isSuperAdminOnly: true,
+            component: (
+                <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right">
+                        <Label>שכר חודשי משוער (₪)</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.cost ? `₪${formatToHebrewNumber(selectedEmployee.cost / 1.4 / 1.1 / 1.18)}` : '-'}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>שכר חודשי ריאלי בשוק (₪)</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.real_market_salary ? `₪${formatToHebrewNumber(selectedEmployee.real_market_salary)}` : '-'}
+                            disabled
+                        />
+                    </div>
+                </div>
+            ),
+        },
+    ], [selectedEmployee, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, performanceLevels, isManager]);
+
+    const renderFormFields = (disabled = false) => {
+        const fields = disabled ? viewFormFields : formFields;
+
+        const generalRows = [
+            'row_fullname_jobrole',
+            'row_project_branch',
+            'row_company_experience',
+            'row_city_startdate',
+            'row_birthdate_phone',
+            'row_emergency_phone'
+        ];
+
+        const performanceRows = [
+            'row_seniority',
+            'row_linkedin',
+            'row_revolving_door',
+            'row_cost',
+            'row_salary_estimates',
+            'row_salary_percentage_date',
+            'row_performance_combined'
+        ];
+
+        const retentionCommandersRows = [
+            'row_unit_criticality',
+            'row_risk_reason_unit',
+            'row_attrition_reason',
+            'row_retention_plan',
+            'row_replacement_needed'
+        ];
+
+        const retentionCompanyRows = [
+            'row_attrition_risk_company',
+            'row_company_retention_plan'
+        ];
+
+        const retentionRows = [...retentionCommandersRows, ...retentionCompanyRows];
+
+        // Any fields not explicitly in these groups go to General
+        const allAssignedRows = [...generalRows, ...performanceRows, ...retentionRows];
+        const remainingRows = fieldOrder.filter(id => !allAssignedRows.includes(id));
+        const effectiveGeneralRows = [...generalRows, ...remainingRows];
+
+        const handleSubOrderChange = (newSubOrder: string[]) => {
+            const subOrderSet = new Set(newSubOrder);
+            const newFullOrder = [...fieldOrder];
+            const indices: number[] = [];
+            newFullOrder.forEach((id, index) => {
+                if (subOrderSet.has(id)) {
+                    indices.push(index);
+                }
+            });
+            indices.forEach((index, i) => {
+                newFullOrder[index] = newSubOrder[i];
+            });
+            updateOrder(newFullOrder);
+        };
+
+        return (
+            <div className="space-y-4">
+                {!disabled && (
+                    <div className="flex items-center justify-between border-b pb-2 mb-4">
+                        <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={resetOrder}
+                            className="text-muted-foreground hover:text-foreground"
+                        >
+                            <RotateCcw className="h-4 w-4 ml-1" />
+                            איפוס סדר שדות
+                        </Button>
+                        <Button
+                            type="button"
+                            variant={isDragMode ? "default" : "outline"}
+                            size="sm"
+                            onClick={() => setIsDragMode(!isDragMode)}
+                        >
+                            <Move className="h-4 w-4 ml-1" />
+                            {isDragMode ? 'סיום עריכה' : 'שינוי סדר שדות'}
+                        </Button>
+                    </div>
+                )}
+
+                <Tabs value={activeTab} onValueChange={setActiveTab} dir="rtl" className="w-full">
+                    <TabsList className="grid w-full grid-cols-3 gap-2 mb-6 bg-transparent h-auto p-0">
+                        <TabsTrigger
+                            value="general"
+                            className="py-2.5 px-4 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:hover:bg-muted transition-all text-right justify-start"
+                        >
+                            כללי
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="performance"
+                            className="py-2.5 px-4 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:hover:bg-muted transition-all text-right justify-start"
+                        >
+                            ביצועים ושכר
+                        </TabsTrigger>
+                        <TabsTrigger
+                            value="retention"
+                            className="py-2.5 px-4 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:hover:bg-muted transition-all text-right justify-start"
+                        >
+                            שימור
+                        </TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="general" className="mt-0">
+                        {activeTab === 'general' && (
+                            <DraggableFormContainer
+                                fields={fields.filter(f => effectiveGeneralRows.includes(f.id))}
+                                fieldOrder={fieldOrder}
+                                onOrderChange={handleSubOrderChange}
+                                onReset={resetOrder}
+                                isDragMode={isDragMode && !disabled}
+                                onToggleDragMode={() => setIsDragMode(!isDragMode)}
+                                isManager={isManager}
+                                isSuperAdmin={isSuperAdmin}
+                                disabled={disabled}
+                                hideControls={true}
+                            />
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="performance" className="mt-0">
+                        {activeTab === 'performance' && (
+                            <DraggableFormContainer
+                                fields={fields.filter(f => performanceRows.includes(f.id))}
+                                fieldOrder={fieldOrder}
+                                onOrderChange={handleSubOrderChange}
+                                onReset={resetOrder}
+                                isDragMode={isDragMode && !disabled}
+                                onToggleDragMode={() => setIsDragMode(!isDragMode)}
+                                isManager={isManager}
+                                isSuperAdmin={isSuperAdmin}
+                                disabled={disabled}
+                                hideControls={true}
+                            />
+                        )}
+                    </TabsContent>
+
+                    <TabsContent value="retention" className="mt-0">
+                        {activeTab === 'retention' && (
+                            <DraggableFormContainer
+                                fields={fields.filter(f => retentionRows.includes(f.id))}
+                                fieldOrder={fieldOrder}
+                                onOrderChange={handleSubOrderChange}
+                                onReset={resetOrder}
+                                isDragMode={isDragMode && !disabled}
+                                onToggleDragMode={() => setIsDragMode(!isDragMode)}
+                                isManager={isManager}
+                                isSuperAdmin={isSuperAdmin}
+                                disabled={disabled}
+                                hideControls={true}
+                            />
+                        )}
+                    </TabsContent>
+                </Tabs>
+            </div>
+        );
+    };
 
     if (authLoading) {
         return (
@@ -493,133 +1758,39 @@ export default function MovingSouth() {
                     </div>
 
                     {/* Employee Detail Dialog */}
-                    <Dialog open={isEmployeeDetailDialogOpen} onOpenChange={setIsEmployeeDetailDialogOpen}>
-                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                    <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+                        <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden">
                             <DialogHeader className="text-right">
                                 <DialogTitle>פרטי עובד: {selectedEmployee?.full_name}</DialogTitle>
                             </DialogHeader>
-                            {selectedEmployee && (
-                                <ScrollArea className="flex-1 p-4">
-                                    <Tabs defaultValue="retention" dir="rtl">
-                                        <TabsList className="grid w-full grid-cols-3">
-                                            <TabsTrigger value="general">כללי</TabsTrigger>
-                                            <TabsTrigger value="performance">ביצועים ושכר</TabsTrigger>
-                                            <TabsTrigger value="retention">שימור</TabsTrigger>
-                                        </TabsList>
-                                        <TabsContent value="general" className="space-y-4 pt-4">
-                                            <div className="grid grid-cols-2 gap-4 text-right">
-                                                <div><Label>שם מלא</Label><Input value={selectedEmployee.full_name} disabled className="bg-muted" /></div>
-                                                <div><Label>תפקיד</Label><Input value={roles.find(r => r.id === selectedEmployee.job_role_id)?.name || '-'} disabled className="bg-muted" /></div>
-                                                <div><Label>תכנית</Label><Input value={projects.find(p => p.id === selectedEmployee.project_id)?.name || '-'} disabled className="bg-muted" /></div>
-                                                <div><Label>ענף</Label><Input value={branches.find(b => b.id === selectedEmployee.branch_id)?.name || '-'} disabled className="bg-muted" /></div>
-                                                <div><Label>עיר</Label><Input value={selectedEmployee.city || '-'} disabled className="bg-muted" /></div>
-                                                <div><Label>תאריך תחילת עבודה</Label><Input value={selectedEmployee.start_date || '-'} disabled className="bg-muted" /></div>
-                                            </div>
-                                        </TabsContent>
-                                        <TabsContent value="performance" className="space-y-4 pt-4 text-right">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                {isManager && (
-                                                    <>
-                                                        <div><Label>עלות חודשית</Label><Input value={formatToHebrewNumber(selectedEmployee.cost)} disabled className="bg-muted" /></div>
-                                                        <div><Label>שכר שוק ריאלי</Label><Input value={formatToHebrewNumber(selectedEmployee.real_market_salary)} disabled className="bg-muted" /></div>
-                                                    </>
-                                                )}
-                                                <div><Label>רמת ביצועים</Label><Input value={performanceLevels.find(l => l.id === selectedEmployee.performance_level_id)?.name || 'לא מוגדר'} disabled className="bg-muted" /></div>
-                                            </div>
-                                        </TabsContent>
-                                        <TabsContent value="retention" className="space-y-4 pt-4 text-right">
-                                            <div className="grid grid-cols-2 gap-4">
-                                                <div><Label>רמת קריטיות</Label><Input value={getCriticalityLabel(selectedEmployee.unit_criticality)} disabled className="bg-muted" /></div>
-                                                <div><Label>סיכוי לעזיבה</Label><Input value={getAttritionRiskLabel(selectedEmployee.attrition_risk)} disabled className="bg-muted" /></div>
-                                                <div className="col-span-2"><Label>סיבת רצון לעזוב (קטגוריות)</Label><Input value={getLeavingReasonName(selectedEmployee.leaving_reason_id)} disabled className="bg-muted" /></div>
-                                                <div className="col-span-2"><Label>סיבת רצון לעזוב (מלל חופשי)</Label><Input value={selectedEmployee.attrition_risk_reason || '-'} disabled className="bg-muted" /></div>
-                                                <div className="col-span-2"><Label>תכנית שימור (יחידה)</Label><Input value={selectedEmployee.retention_plan || '-'} disabled className="bg-muted" /></div>
-                                                <div><Label>לגייס במקומו?</Label><Input value={selectedEmployee.replacement_needed || '-'} disabled className="bg-muted" /></div>
-                                                <div><Label>סיכוי לעזוב (חברה)</Label><Input value={selectedEmployee.company_attrition_risk || '-'} disabled className="bg-muted" /></div>
-                                                <div className="col-span-2"><Label>התייחסות למעבר דרומה (חברה)</Label><Input value={selectedEmployee.company_retention_plan || '-'} disabled className="bg-muted" /></div>
-                                            </div>
-                                        </TabsContent>
-                                    </Tabs>
-                                </ScrollArea>
-                            )}
+                            <ScrollArea className="flex-1 overflow-y-auto pr-4">
+                                <div className="grid gap-4 py-4">
+                                    {renderFormFields(true)}
+                                </div>
+                            </ScrollArea>
                             <DialogFooter className="p-4 border-t">
-                                <Button onClick={() => setIsEmployeeDetailDialogOpen(false)}>סגור</Button>
+                                <Button onClick={() => setIsViewDialogOpen(false)}>סגור</Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
 
                     {/* Edit Employee Dialog */}
                     <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden flex flex-col">
+                        <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden">
                             <DialogHeader className="text-right">
-                                <DialogTitle>עריכת נתוני מעבר דרומה: {editFormData?.full_name}</DialogTitle>
+                                <DialogTitle>עריכת נתוני עובד: {formData.full_name}</DialogTitle>
                             </DialogHeader>
-                            <ScrollArea className="flex-1 p-4">
-                                <div className="grid grid-cols-2 gap-6 text-right" dir="rtl">
-                                    <div className="space-y-2">
-                                        <Label>מידת קריטיות ליחידה</Label>
-                                        <Select value={editFormData.unit_criticality?.toString()} onValueChange={v => setEditFormData(p => ({ ...p, unit_criticality: parseInt(v) }))}>
-                                            <SelectTrigger className="text-right"><SelectValue placeholder="בחר רמה" /></SelectTrigger>
-                                            <SelectContent className="text-right">
-                                                {Object.entries(criticalityLabels).map(([v, l]) => <SelectItem key={v} value={v} className="text-right">{l}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>מידת סיכוי לעזיבה</Label>
-                                        <Select value={editFormData.attrition_risk?.toString()} onValueChange={v => setEditFormData(p => ({ ...p, attrition_risk: parseInt(v) }))}>
-                                            <SelectTrigger className="text-right"><SelectValue placeholder="בחר רמה" /></SelectTrigger>
-                                            <SelectContent className="text-right">
-                                                {Object.entries(attritionRiskLabels).map(([v, l]) => <SelectItem key={v} value={v} className="text-right">{l}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <Label>סיבת רצון לעזוב (קטגוריות)</Label>
-                                        <Select value={editFormData.leaving_reason_id || undefined} onValueChange={v => setEditFormData(p => ({ ...p, leaving_reason_id: v }))}>
-                                            <SelectTrigger className="text-right"><SelectValue placeholder="בחר סיבה" /></SelectTrigger>
-                                            <SelectContent className="text-right">
-                                                {leavingReasons.map(r => <SelectItem key={r.id} value={r.id} className="text-right">{r.name}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <Label>סיבת רצון לעזוב (מלל חופשי)</Label>
-                                        <Input value={editFormData.attrition_risk_reason || ''} onChange={e => setEditFormData(p => ({ ...p, attrition_risk_reason: e.target.value }))} className="text-right" />
-                                    </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <Label>תכנית שימור (יחידה)</Label>
-                                        <Input value={editFormData.retention_plan || ''} onChange={e => setEditFormData(p => ({ ...p, retention_plan: e.target.value }))} className="text-right" />
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>לגייס במקומו?</Label>
-                                        <Select value={editFormData.replacement_needed || undefined} onValueChange={v => setEditFormData(p => ({ ...p, replacement_needed: v }))}>
-                                            <SelectTrigger className="text-right"><SelectValue placeholder="בחר" /></SelectTrigger>
-                                            <SelectContent className="text-right">
-                                                <SelectItem value="כן" className="text-right">כן</SelectItem>
-                                                <SelectItem value="לא" className="text-right">לא</SelectItem>
-                                                <SelectItem value="טרם הוחלט" className="text-right">טרם הוחלט</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2">
-                                        <Label>סיכוי לעזיבה (חברה)</Label>
-                                        <Select value={editFormData.company_attrition_risk?.toString()} onValueChange={v => setEditFormData(p => ({ ...p, company_attrition_risk: parseInt(v) }))}>
-                                            <SelectTrigger className="text-right"><SelectValue placeholder="בחר רמה" /></SelectTrigger>
-                                            <SelectContent className="text-right">
-                                                {Object.entries(attritionRiskLabels).map(([v, l]) => <SelectItem key={v} value={v} className="text-right">{l}</SelectItem>)}
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
-                                    <div className="space-y-2 col-span-2">
-                                        <Label>התייחסות למעבר דרומה (חברה)</Label>
-                                        <Input value={editFormData.company_retention_plan || ''} onChange={e => setEditFormData(p => ({ ...p, company_retention_plan: e.target.value }))} className="text-right" />
-                                    </div>
+                            <ScrollArea className="flex-1 overflow-y-auto pr-4 overflow-x-hidden">
+                                <div className="grid gap-4 py-4">
+                                    {renderFormFields()}
                                 </div>
                             </ScrollArea>
                             <DialogFooter className="p-4 border-t gap-2">
                                 <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>ביטול</Button>
-                                <Button onClick={handleUpdateEmployee}>שמור שינויים</Button>
+                                <Button onClick={handleUpdateEmployee} disabled={formLoading}>
+                                    {formLoading && <Loader2 className="ml-2 h-4 w-4 animate-spin" />}
+                                    שמור שינויים
+                                </Button>
                             </DialogFooter>
                         </DialogContent>
                     </Dialog>
