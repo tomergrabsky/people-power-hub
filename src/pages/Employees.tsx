@@ -187,6 +187,7 @@ export default function Employees() {
     salary_raise_percentage: false,
     our_sourcing: false,
     leaving_reason_id: false,
+    replacement_needed: false,
     created_at: false,
     updated_at: false,
     created_by: false,
@@ -217,6 +218,7 @@ export default function Employees() {
     created_by: 'נוצר ע"י',
     our_sourcing: 'איתור שלנו?',
     leaving_reason_id: 'סיבת רצון לעזוב - קטגוריות',
+    replacement_needed: 'נדרשת החלפה?',
   };
 
   // Manager-only columns
@@ -239,7 +241,7 @@ export default function Employees() {
     'professional_experience_years', 'organization_experience_years', 'city',
     'start_date', 'cost', 'attrition_risk', 'attrition_risk_reason',
     'unit_criticality', 'salary_raise_date', 'salary_raise_percentage',
-    'created_at', 'updated_at', 'created_by', 'our_sourcing', 'leaving_reason_id'
+    'created_at', 'updated_at', 'created_by', 'our_sourcing', 'leaving_reason_id', 'replacement_needed'
   ], []);
 
   const { columnOrder, updateOrder: updateColumnOrder, resetOrder: resetColumnOrder } = useColumnOrder('employees', defaultColumnOrder);
@@ -302,6 +304,7 @@ export default function Employees() {
     'row_attrition_risk_unit',
     'row_leaving_reason',
     'row_attrition_reason',
+    'row_replacement_needed',
     'row_retention_plan',
     'row_attrition_risk_company',
     'row_company_retention_plan',
@@ -340,6 +343,7 @@ export default function Employees() {
     retention_plan: '',
     company_retention_plan: '',
     company_attrition_risk: '',
+    replacement_needed: '',
   });
 
   useEffect(() => {
@@ -544,6 +548,7 @@ export default function Employees() {
       retention_plan: '',
       company_retention_plan: '',
       company_attrition_risk: '',
+      replacement_needed: '',
     });
     setActiveTab('general');
   };
@@ -588,6 +593,7 @@ export default function Employees() {
       insertData.retention_plan = formData.retention_plan || null;
       insertData.company_retention_plan = formData.company_retention_plan || null;
       insertData.company_attrition_risk = formData.company_attrition_risk ? parseInt(formData.company_attrition_risk) : null;
+      insertData.replacement_needed = formData.replacement_needed || null;
     }
 
     try {
@@ -640,6 +646,7 @@ export default function Employees() {
       updateData.retention_plan = formData.retention_plan || null;
       updateData.company_retention_plan = formData.company_retention_plan || null;
       updateData.company_attrition_risk = formData.company_attrition_risk ? parseInt(formData.company_attrition_risk) : null;
+      updateData.replacement_needed = formData.replacement_needed || null;
     }
 
     // Super admin only field
@@ -702,6 +709,7 @@ export default function Employees() {
       retention_plan: employee.retention_plan || '',
       company_retention_plan: (employee as any).company_retention_plan || '',
       company_attrition_risk: employee.company_attrition_risk?.toString() || '',
+      replacement_needed: (employee as any).replacement_needed || '',
     });
     setIsEditDialogOpen(true);
     setActiveTab('general');
@@ -1160,6 +1168,29 @@ export default function Employees() {
       ),
     },
     {
+      id: 'row_replacement_needed',
+      label: 'נדרשת החלפה?',
+      isManagerOnly: true,
+      component: (
+        <div className="space-y-2 text-right">
+          <Label htmlFor="replacement_needed">נדרשת החלפה?</Label>
+          <Select
+            value={formData.replacement_needed}
+            onValueChange={(value) => setFormData({ ...formData, replacement_needed: value })}
+          >
+            <SelectTrigger className="text-right">
+              <SelectValue placeholder="בחר אפשרות" />
+            </SelectTrigger>
+            <SelectContent dir="rtl">
+              <SelectItem value="כן" className="text-right">כן</SelectItem>
+              <SelectItem value="לא" className="text-right">לא</SelectItem>
+              <SelectItem value="טרם הוחלט" className="text-right">טרם הוחלט</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      ),
+    },
+    {
       id: 'row_company_retention_plan',
       label: 'תכנית שימור - לדעת החברה',
       isManagerOnly: true,
@@ -1568,6 +1599,21 @@ export default function Employees() {
       ),
     },
     {
+      id: 'row_replacement_needed',
+      label: 'נדרשת החלפה?',
+      isManagerOnly: true,
+      component: (
+        <div className="space-y-2 text-right">
+          <Label>נדרשת החלפה?</Label>
+          <Input
+            className="text-right bg-muted"
+            value={(selectedEmployee as any)?.replacement_needed || '-'}
+            disabled
+          />
+        </div>
+      ),
+    },
+    {
       id: 'row_company_retention_plan',
       label: 'תכנית שימור - לדעת החברה',
       isManagerOnly: true,
@@ -1732,6 +1778,7 @@ export default function Employees() {
       'row_attrition_risk_unit',
       'row_leaving_reason',
       'row_attrition_reason',
+      'row_replacement_needed',
       'row_retention_plan'
     ];
 
