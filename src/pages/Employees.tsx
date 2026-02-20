@@ -47,7 +47,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Pencil, Trash2, Filter, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Eye, Download, GripVertical, RotateCcw, Move } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Filter, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Eye, Download, GripVertical, RotateCcw, Move, Users, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useFormFieldOrder } from '@/hooks/useFormFieldOrder';
@@ -1846,10 +1846,11 @@ export default function Employees() {
 
           <TabsContent value="retention" className="mt-0">
             {activeTab === 'retention' && (
-              <div className="space-y-6">
+              <div className="space-y-10 py-2">
                 <div className="space-y-4">
-                  <div className="bg-muted/50 p-2 rounded-md">
-                    <h3 className="text-sm font-semibold text-right">נתונים ממפקדים</h3>
+                  <div className="flex items-center gap-2 border-b-2 border-primary/20 pb-2 text-primary">
+                    <Users className="w-5 h-5 flex-shrink-0" />
+                    <h3 className="text-lg font-bold text-right">נתונים ממפקדים</h3>
                   </div>
                   <DraggableFormContainer
                     fields={fields.filter(f => retentionCommandersRows.includes(f.id))}
@@ -1866,8 +1867,9 @@ export default function Employees() {
                 </div>
 
                 <div className="space-y-4">
-                  <div className="bg-muted/50 p-2 rounded-md">
-                    <h3 className="text-sm font-semibold text-right">נתונים מהחברה</h3>
+                  <div className="flex items-center gap-2 border-b-2 border-primary/20 pb-2 text-primary">
+                    <Building2 className="w-5 h-5 flex-shrink-0" />
+                    <h3 className="text-lg font-bold text-right">נתונים מהחברה</h3>
                   </div>
                   <DraggableFormContainer
                     fields={fields.filter(f => retentionCompanyRows.includes(f.id))}
