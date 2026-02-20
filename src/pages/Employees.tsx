@@ -1131,7 +1131,7 @@ export default function Employees() {
     },
     {
       id: 'row_salarydate_criticality',
-      label: 'תאריך העלאת שכר וקריטיות',
+      label: 'תאריך העלאת שכר',
       isManagerOnly: true,
       component: (
         <div className="grid grid-cols-2 gap-4">
@@ -1145,9 +1145,31 @@ export default function Employees() {
               dir="ltr"
             />
           </div>
+        </div>
+      ),
+    },
+    {
+      id: 'row_salary_percentage',
+      label: 'אחוז העלאת שכר וקריטיות',
+      isManagerOnly: true,
+      component: (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2 text-right">
+            <Label htmlFor="salary_raise_percentage">אחוז העלאת שכר (%)</Label>
+            <Input
+              id="salary_raise_percentage"
+              type="number"
+              min="0"
+              step="0.1"
+              value={formData.salary_raise_percentage}
+              onChange={(e) => setFormData({ ...formData, salary_raise_percentage: e.target.value })}
+              dir="ltr"
+            />
+          </div>
           <div className="space-y-2 text-right">
             <Label htmlFor="unit_criticality">קריטיות ליחידה (0-5)</Label>
             <Select
+
               value={formData.unit_criticality}
               onValueChange={(value) => setFormData({ ...formData, unit_criticality: value })}
             >
@@ -1163,27 +1185,6 @@ export default function Employees() {
                 <SelectItem value="5" className="text-right">5 - קריטי מאוד לארגון</SelectItem>
               </SelectContent>
             </Select>
-          </div>
-        </div>
-      ),
-    },
-    {
-      id: 'row_salary_percentage',
-      label: 'אחוז העלאת שכר',
-      isManagerOnly: true,
-      component: (
-        <div className="grid grid-cols-2 gap-4">
-          <div className="space-y-2 text-right">
-            <Label htmlFor="salary_raise_percentage">אחוז העלאת שכר (%)</Label>
-            <Input
-              id="salary_raise_percentage"
-              type="number"
-              min="0"
-              step="0.1"
-              value={formData.salary_raise_percentage}
-              onChange={(e) => setFormData({ ...formData, salary_raise_percentage: e.target.value })}
-              dir="ltr"
-            />
           </div>
         </div>
       ),
@@ -1541,7 +1542,7 @@ export default function Employees() {
     },
     {
       id: 'row_salarydate_criticality',
-      label: 'תאריך העלאת שכר וקריטיות',
+      label: 'תאריך העלאת שכר',
       isManagerOnly: true,
       component: (
         <div className="grid grid-cols-2 gap-4">
@@ -1554,20 +1555,12 @@ export default function Employees() {
               dir="ltr"
             />
           </div>
-          <div className="space-y-2 text-right">
-            <Label>קריטיות ליחידה (0-5)</Label>
-            <Input
-              className="text-right bg-muted"
-              value={selectedEmployee?.unit_criticality != null ? `${selectedEmployee.unit_criticality}${selectedEmployee.unit_criticality === 1 ? ' - די חשוב לארגון' : selectedEmployee.unit_criticality === 2 ? ' - חשוב לארגון' : selectedEmployee.unit_criticality === 3 ? ' - חשוב מאוד לארגון' : selectedEmployee.unit_criticality === 4 ? ' - קריטי לארגון' : selectedEmployee.unit_criticality === 5 ? ' - קריטי מאוד לארגון' : ''}` : '-'}
-              disabled
-            />
-          </div>
         </div>
       ),
     },
     {
       id: 'row_salary_percentage',
-      label: 'אחוז העלאת שכר',
+      label: 'אחוז העלאת שכר וקריטיות',
       isManagerOnly: true,
       component: (
         <div className="grid grid-cols-2 gap-4">
@@ -1578,6 +1571,14 @@ export default function Employees() {
               value={selectedEmployee?.salary_raise_percentage ? `${selectedEmployee.salary_raise_percentage}%` : '-'}
               disabled
               dir="ltr"
+            />
+          </div>
+          <div className="space-y-2 text-right">
+            <Label>קריטיות ליחידה (0-5)</Label>
+            <Input
+              className="text-right bg-muted"
+              value={selectedEmployee?.unit_criticality != null ? `${selectedEmployee.unit_criticality}${selectedEmployee.unit_criticality === 1 ? ' - די חשוב לארגון' : selectedEmployee.unit_criticality === 2 ? ' - חשוב לארגון' : selectedEmployee.unit_criticality === 3 ? ' - חשוב מאוד לארגון' : selectedEmployee.unit_criticality === 4 ? ' - קריטי לארגון' : selectedEmployee.unit_criticality === 5 ? ' - קריטי מאוד לארגון' : ''}` : '-'}
+              disabled
             />
           </div>
         </div>
