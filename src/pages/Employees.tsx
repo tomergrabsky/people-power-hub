@@ -829,6 +829,15 @@ export default function Employees() {
       component: (
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2 text-right">
+            <Label htmlFor="full_name">שם מלא *</Label>
+            <Input
+              id="full_name"
+              className="text-right"
+              value={formData.full_name}
+              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2 text-right">
             <Label htmlFor="job_role">תפקיד</Label>
             <Select
               value={formData.job_role_id}
@@ -843,15 +852,6 @@ export default function Employees() {
                 ))}
               </SelectContent>
             </Select>
-          </div>
-          <div className="space-y-2 text-right">
-            <Label htmlFor="full_name">שם מלא *</Label>
-            <Input
-              id="full_name"
-              className="text-right"
-              value={formData.full_name}
-              onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
-            />
           </div>
         </div>
       ),
@@ -1323,18 +1323,18 @@ export default function Employees() {
       component: (
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2 text-right">
-            <Label>תפקיד</Label>
-            <Input
-              className="text-right bg-muted"
-              value={getRoleName(selectedEmployee?.job_role_id || null)}
-              disabled
-            />
-          </div>
-          <div className="space-y-2 text-right">
             <Label>שם מלא</Label>
             <Input
               className="text-right bg-muted"
               value={selectedEmployee?.full_name || ''}
+              disabled
+            />
+          </div>
+          <div className="space-y-2 text-right">
+            <Label>תפקיד</Label>
+            <Input
+              className="text-right bg-muted"
+              value={getRoleName(selectedEmployee?.job_role_id || null)}
               disabled
             />
           </div>
