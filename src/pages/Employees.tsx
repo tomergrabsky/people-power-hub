@@ -2051,7 +2051,7 @@ export default function Employees() {
                 הוסף עובד
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden">
+            <DialogContent className="w-full h-[100dvh] max-h-[100dvh] rounded-none p-4 sm:p-6 sm:rounded-lg sm:h-auto sm:max-h-[85vh] max-w-4xl sm:w-[90vw] flex flex-col overflow-hidden">
               <DialogHeader className="text-right flex-shrink-0">
                 <DialogTitle className="text-right">הוספת עובד חדש</DialogTitle>
                 <DialogDescription className="text-right">מלא את פרטי העובד החדש</DialogDescription>
@@ -2222,7 +2222,7 @@ export default function Employees() {
         </div>
 
         {/* Table */}
-        <div className="table-container">
+        <div className="table-container overflow-x-auto w-full pb-4">
           <ContextMenu>
             <ContextMenuTrigger asChild>
               <div>
@@ -2400,7 +2400,7 @@ export default function Employees() {
 
         {/* Edit Dialog */}
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-          <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden">
+          <DialogContent className="w-full h-[100dvh] max-h-[100dvh] rounded-none p-4 sm:p-6 sm:rounded-lg sm:h-auto sm:max-h-[85vh] max-w-4xl sm:w-[90vw] flex flex-col overflow-hidden">
             <DialogHeader className="text-right flex-shrink-0">
               <DialogTitle className="text-right">עריכת עובדים - {selectedEmployee?.full_name}</DialogTitle>
               <DialogDescription className="text-right">עדכן את פרטי העובד</DialogDescription>
@@ -2421,7 +2421,7 @@ export default function Employees() {
 
         {/* View Dialog */}
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-          <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden">
+          <DialogContent className="w-full h-[100dvh] max-h-[100dvh] rounded-none p-4 sm:p-6 sm:rounded-lg sm:h-auto sm:max-h-[85vh] max-w-4xl sm:w-[90vw] flex flex-col overflow-hidden">
             <DialogHeader className="text-right flex-shrink-0">
               <DialogTitle className="text-right">פרטי עובד</DialogTitle>
               <DialogDescription className="text-right">צפייה בפרטי העובד</DialogDescription>

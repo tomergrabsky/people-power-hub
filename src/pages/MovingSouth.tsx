@@ -1786,7 +1786,7 @@ export default function MovingSouth() {
 
                     {/* Employee Detail Dialog */}
                     <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
-                        <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden">
+                        <DialogContent className="w-full h-[100dvh] max-h-[100dvh] rounded-none p-4 sm:p-6 sm:rounded-lg sm:h-auto sm:max-h-[85vh] max-w-4xl sm:w-[90vw] flex flex-col overflow-hidden">
                             <DialogHeader className="text-right">
                                 <DialogTitle>פרטי עובד: {selectedEmployee?.full_name}</DialogTitle>
                             </DialogHeader>
@@ -1803,7 +1803,7 @@ export default function MovingSouth() {
 
                     {/* Edit Employee Dialog */}
                     <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-                        <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden">
+                        <DialogContent className="w-full h-[100dvh] max-h-[100dvh] rounded-none p-4 sm:p-6 sm:rounded-lg sm:h-auto sm:max-h-[85vh] max-w-4xl sm:w-[90vw] flex flex-col overflow-hidden">
                             <DialogHeader className="text-right">
                                 <DialogTitle>עריכת נתוני עובד: {formData.full_name}</DialogTitle>
                             </DialogHeader>
