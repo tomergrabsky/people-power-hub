@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/integrations/firebase/client';
-import { collection, getDocs } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc } from 'firebase/firestore';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,6 +20,8 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import {
   Table,
@@ -30,7 +32,14 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Loader2, Filter, X, Users, Eye } from 'lucide-react';
+import {
+  Tabs,
+  TabsContent,
+  TabsList,
+  TabsTrigger,
+} from '@/components/ui/tabs';
+import { Loader2, Users, Eye, Filter, X } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   PieChart,
   Pie,
@@ -99,6 +108,14 @@ interface Employee {
   real_market_salary?: number | null;
   revolving_door?: boolean | null;
   leaving_reason_id?: string | null;
+  replacement_needed?: string | null;
+  retention_plan?: string | null;
+  company_retention_plan?: string | null;
+  company_attrition_risk?: number | null;
+  id_number?: string | null;
+  performance_level_id?: string | null;
+  performance_update_date?: string | null;
+  our_sourcing?: boolean | null;
 }
 
 interface NamedEntity {
@@ -128,6 +145,7 @@ export default function Analytics() {
   const [branches, setBranches] = useState<NamedEntity[]>([]);
   const [seniorityLevels, setSeniorityLevels] = useState<NamedEntity[]>([]);
   const [leavingReasons, setLeavingReasons] = useState<NamedEntity[]>([]);
+  const [performanceLevels, setPerformanceLevels] = useState<NamedEntity[]>([]);
 
   // Filter states
   const [filterProject, setFilterProject] = useState<string>('all');
@@ -195,10 +213,26 @@ export default function Analytics() {
     }
   }, [user]);
 
+  const formatToHebrewNumber = (val: number | string | null | undefined) => {
+    if (val === null || val === undefined || val === '') return '';
+    const num = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val;
+    if (isNaN(num)) return '';
+    return Math.round(num).toLocaleString('he-IL');
+  };
+
+  const getOrganizationExperienceYears = (startDate: string) => {
+    if (!startDate) return 0;
+    const start = new Date(startDate);
+    const today = new Date();
+    const diffTime = today.getTime() - start.getTime();
+    const diffYears = diffTime / (1000 * 60 * 60 * 24 * 365.25);
+    return Math.max(0, Math.round(diffYears * 10) / 10);
+  };
+
   const fetchData = async () => {
     setLoading(true);
 
-    const [employeesRes, projectsRes, rolesRes, companiesRes, branchesRes, seniorityRes, leavingReasonsRes] = await Promise.all([
+    const [employeesRes, projectsRes, rolesRes, companiesRes, branchesRes, seniorityRes, leavingReasonsRes, performanceLevelsRes] = await Promise.all([
       getDocs(collection(db, 'employees')),
       getDocs(collection(db, 'projects')),
       getDocs(collection(db, 'job_roles')),
@@ -206,6 +240,7 @@ export default function Analytics() {
       getDocs(collection(db, 'branches')),
       getDocs(collection(db, 'seniority_levels')),
       getDocs(collection(db, 'leaving_reasons')),
+      getDocs(collection(db, 'performance_levels')),
     ]);
 
     const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
@@ -217,6 +252,7 @@ export default function Analytics() {
     setBranches(mapDocs(branchesRes));
     setSeniorityLevels(mapDocs(seniorityRes));
     setLeavingReasons(mapDocs(leavingReasonsRes));
+    setPerformanceLevels(mapDocs(performanceLevelsRes));
     setLoading(false);
   };
 
@@ -772,7 +808,8 @@ export default function Analytics() {
         if (selectedCriticality === 'לא מוגדר') {
           return emp.unit_criticality === null || emp.unit_criticality === undefined;
         }
-        return emp.unit_criticality?.toString() === selectedCriticality;
+        const label = getCriticalityLabel(emp.unit_criticality);
+        return emp.unit_criticality?.toString() === selectedCriticality || label === selectedCriticality;
       })
       .map((emp) => ({
         ...emp,
@@ -798,7 +835,8 @@ export default function Analytics() {
         if (selectedAttritionRisk === 'לא מוגדר') {
           return emp.attrition_risk === null || emp.attrition_risk === undefined;
         }
-        return emp.attrition_risk?.toString() === selectedAttritionRisk;
+        const label = getAttritionRiskLabel(emp.attrition_risk);
+        return emp.attrition_risk?.toString() === selectedAttritionRisk || label === selectedAttritionRisk;
       })
       .map((emp) => ({
         ...emp,
@@ -848,29 +886,39 @@ export default function Analytics() {
   };
 
   // Helper functions to get names from IDs
-  const getRoleName = (roleId: string | null) => {
-    if (!roleId) return 'לא מוגדר';
-    return roles.find((r) => r.id === roleId)?.name || 'לא מוגדר';
+  const getRoleName = (roleId: string | null, rolesList = roles) => {
+    if (!roleId) return '-';
+    return rolesList.find((r) => r.id === roleId)?.name || '-';
   };
 
-  const getProjectName = (projectId: string | null) => {
-    if (!projectId) return 'לא משויך';
-    return projects.find((p) => p.id === projectId)?.name || 'לא משויך';
+  const getProjectName = (projectId: string | null, projectsList = projects) => {
+    if (!projectId) return '-';
+    return projectsList.find((p) => p.id === projectId)?.name || '-';
   };
 
-  const getBranchName = (branchId: string | undefined) => {
-    if (!branchId) return 'לא מוגדר';
-    return branches.find((b) => b.id === branchId)?.name || 'לא מוגדר';
+  const getBranchName = (branchId: string | undefined | null, branchesList = branches) => {
+    if (!branchId) return '-';
+    return branchesList.find((b) => b.id === branchId)?.name || '-';
   };
 
-  const getEmployingCompanyName = (companyId: string | undefined | null) => {
-    if (!companyId) return 'לא מוגדר';
-    return companies.find((c) => c.id === companyId)?.name || 'לא מוגדר';
+  const getEmployingCompanyName = (companyId: string | undefined | null, companiesList = companies) => {
+    if (!companyId) return '-';
+    return companiesList.find((c) => c.id === companyId)?.name || '-';
   };
 
-  const getSeniorityLevelName = (seniorityId: string | undefined) => {
-    if (!seniorityId) return 'לא מוגדר';
-    return seniorityLevels.find((s) => s.id === seniorityId)?.name || 'לא מוגדר';
+  const getSeniorityLevelName = (seniorityId: string | undefined | null, seniorityList = seniorityLevels) => {
+    if (!seniorityId) return '-';
+    return seniorityList.find((s) => s.id === seniorityId)?.name || '-';
+  };
+
+  const getPerformanceLevelName = (levelId: string | null | undefined, performanceList = performanceLevels) => {
+    if (!levelId) return 'לא מוגדר';
+    return performanceList.find(l => l.id === levelId)?.name || 'לא מוגדר';
+  };
+
+  const getLeavingReasonName = (id: string | null | undefined, leavingReasonsList = leavingReasons) => {
+    if (!id) return '-';
+    return leavingReasonsList.find(r => r.id === id)?.name || '-';
   };
 
   const clearFilters = () => {
@@ -1016,420 +1064,252 @@ export default function Analytics() {
             <Loader2 className="w-8 h-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-6">
-            {/* Row 1: Pie charts - Program and Role */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle>התפלגות עובדים לפי תכנית</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={employeesByProject}
-                          cx="65%"
-                          cy="50%"
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                          labelLine={true}
-                          onClick={(data) => handleProgramClick(data.name)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          {employeesByProject.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend
-                          layout="vertical"
-                          align="left"
-                          verticalAlign="middle"
-                          wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right', cursor: 'pointer' }}
-                          onClick={(data) => handleProgramClick(data.value)}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle>התפלגות עובדים לפי תפקיד</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={employeesByRole}
-                          cx="65%"
-                          cy="50%"
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                          labelLine={true}
-                        >
-                          {employeesByRole.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend
-                          layout="vertical"
-                          align="left"
-                          verticalAlign="middle"
-                          wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right' }}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Row 2: Pie charts - Branch and Seniority */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle>התפלגות עובדים לפי ענף</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={employeesByBranch}
-                          cx="65%"
-                          cy="50%"
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                          labelLine={true}
-                          onClick={(data) => handleBranchClick(data.name)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          {employeesByBranch.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend
-                          layout="vertical"
-                          align="left"
-                          verticalAlign="middle"
-                          wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right', cursor: 'pointer' }}
-                          onClick={(data) => handleBranchClick(data.value)}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle>התפלגות עובדים לפי רמת ותק</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie
-                          data={employeesBySeniority}
-                          cx="65%"
-                          cy="50%"
-                          outerRadius={80}
-                          fill="#8884d8"
-                          dataKey="value"
-                          label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
-                          labelLine={true}
-                          onClick={(data) => handleSeniorityClick(data.name)}
-                          style={{ cursor: 'pointer' }}
-                        >
-                          {employeesBySeniority.map((_, index) => (
-                            <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip content={<CustomTooltip />} />
-                        <Legend
-                          layout="vertical"
-                          align="left"
-                          verticalAlign="middle"
-                          wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right', cursor: 'pointer' }}
-                          onClick={(data) => handleSeniorityClick(data.value)}
-                        />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Row 2: Hiring trend */}
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle>מגמת קליטות - 12 חודשים אחרונים</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={hiringTrend}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <Tooltip content={<CustomTooltip />} />
-                      <Line
-                        type="monotone"
-                        dataKey="count"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth={3}
-                        dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
-                        activeDot={{ r: 6 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Seniority trend over time */}
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle>מגמת עובדים לפי רמת Seniority - מינואר 2025</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <LineChart data={seniorityTrend}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <Tooltip />
-                      <Legend
-                        wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
-                      />
-                      {seniorityLevels.map((level, index) => (
-                        <Line
-                          key={level.id}
-                          type="monotone"
-                          dataKey={level.name}
-                          stroke={COLORS[index % COLORS.length]}
-                          strokeWidth={2}
-                          dot={{ fill: COLORS[index % COLORS.length], strokeWidth: 2, r: 3 }}
-                          activeDot={{ r: 5 }}
-                        />
-                      ))}
-                      <Line
-                        type="monotone"
-                        dataKey="לא מוגדר"
-                        stroke="hsl(var(--muted-foreground))"
-                        strokeWidth={2}
-                        strokeDasharray="5 5"
-                        dot={{ fill: 'hsl(var(--muted-foreground))', strokeWidth: 2, r: 3 }}
-                        activeDot={{ r: 5 }}
-                      />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Row 3: Bar charts */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle>התפלגות עובדים לפי עיר (10 הגדולות)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={employeesByCity}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Bar
-                          dataKey="value"
-                          fill="hsl(var(--accent))"
-                          radius={[4, 4, 0, 0]}
-                          onClick={(data) => handleCityClick(data.name)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle>התפלגות עובדים לפי חברה מעסיקה</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={employeesByCompany}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <Tooltip content={<CustomTooltip />} />
-                        <Bar
-                          dataKey="value"
-                          fill="hsl(var(--primary))"
-                          radius={[4, 4, 0, 0]}
-                          onClick={(data) => handleCompanyClick(data.name)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            {/* Row 4: Average experience by role */}
-            <Card className="glass-card">
-              <CardHeader>
-                <CardTitle>ממוצע ותק מקצועי לפי תפקיד (שנים)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={avgExperienceByRole}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <Tooltip
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-                                <p className="font-medium text-foreground">{label}</p>
-                                <p className="text-primary">{payload[0].value} שנים</p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Bar dataKey="average" fill="hsl(280, 65%, 60%)" radius={[4, 4, 0, 0]} />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Row 5: Cost charts (managers only) */}
-            {isManager && (costByProject.length > 0 || costByBranch.length > 0) && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {costByProject.length > 0 && (
+          <div className="w-full">
+            <div className="outline-none">
+              <div className="space-y-6">
+                {/* Row 1: Pie charts - Program and Role */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card className="glass-card">
                     <CardHeader>
-                      <CardTitle>עלות חודשית לפי תכנית</CardTitle>
+                      <CardTitle>התפלגות עובדים לפי תכנית</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={costByProject}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <Tooltip
-                              content={({ active, payload, label }) => {
-                                if (active && payload && payload.length) {
-                                  return (
-                                    <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-                                      <p className="font-medium text-foreground">{label}</p>
-                                      <p className="text-primary" dir="ltr">₪{payload[0].value?.toLocaleString()}</p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
+                          <PieChart>
+                            <Pie
+                              data={employeesByProject}
+                              cx="65%"
+                              cy="50%"
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                              label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                              labelLine={true}
+                              onClick={(data) => handleProgramClick(data.name)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              {employeesByProject.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend
+                              layout="vertical"
+                              align="left"
+                              verticalAlign="middle"
+                              wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right', cursor: 'pointer' }}
+                              onClick={(data) => handleProgramClick(data.value)}
                             />
-                            <Bar dataKey="cost" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} />
-                          </BarChart>
+                          </PieChart>
                         </ResponsiveContainer>
                       </div>
                     </CardContent>
                   </Card>
-                )}
 
-                {costByBranch.length > 0 && (
                   <Card className="glass-card">
                     <CardHeader>
-                      <CardTitle>עלות חודשית לפי ענף</CardTitle>
+                      <CardTitle>התפלגות עובדים לפי תפקיד</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={costByBranch}>
-                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <Tooltip
-                              content={({ active, payload, label }) => {
-                                if (active && payload && payload.length) {
-                                  return (
-                                    <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-                                      <p className="font-medium text-foreground">{label}</p>
-                                      <p className="text-primary" dir="ltr">₪{payload[0].value?.toLocaleString()}</p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
+                          <PieChart>
+                            <Pie
+                              data={employeesByRole}
+                              cx="65%"
+                              cy="50%"
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                              label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                              labelLine={true}
+                            >
+                              {employeesByRole.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend
+                              layout="vertical"
+                              align="left"
+                              verticalAlign="middle"
+                              wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right' }}
                             />
-                            <Bar dataKey="cost" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
-                          </BarChart>
+                          </PieChart>
                         </ResponsiveContainer>
                       </div>
                     </CardContent>
                   </Card>
-                )}
-              </div>
-            )}
+                </div>
 
-            {/* Row: Criticality and Attrition Risk charts (managers only) */}
-            {isManager && (employeesByCriticality.length > 0 || employeesByAttritionRisk.length > 0) && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                {employeesByCriticality.length > 0 && (
+                {/* Row 2: Pie charts - Branch and Seniority */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                   <Card className="glass-card">
                     <CardHeader>
-                      <CardTitle>התפלגות עובדים לפי קריטיות ליחידה</CardTitle>
+                      <CardTitle>התפלגות עובדים לפי ענף</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={employeesByCriticality}>
+                          <PieChart>
+                            <Pie
+                              data={employeesByBranch}
+                              cx="65%"
+                              cy="50%"
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                              label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                              labelLine={true}
+                              onClick={(data) => handleBranchClick(data.name)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              {employeesByBranch.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend
+                              layout="vertical"
+                              align="left"
+                              verticalAlign="middle"
+                              wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right', cursor: 'pointer' }}
+                              onClick={(data) => handleBranchClick(data.value)}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card className="glass-card">
+                    <CardHeader>
+                      <CardTitle>התפלגות עובדים לפי רמת ותק</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <PieChart>
+                            <Pie
+                              data={employeesBySeniority}
+                              cx="65%"
+                              cy="50%"
+                              outerRadius={80}
+                              fill="#8884d8"
+                              dataKey="value"
+                              label={({ percent }) => `${(percent * 100).toFixed(0)}%`}
+                              labelLine={true}
+                              onClick={(data) => handleSeniorityClick(data.name)}
+                              style={{ cursor: 'pointer' }}
+                            >
+                              {employeesBySeniority.map((_, index) => (
+                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                              ))}
+                            </Pie>
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend
+                              layout="vertical"
+                              align="left"
+                              verticalAlign="middle"
+                              wrapperStyle={{ paddingLeft: '10px', fontSize: '12px', textAlign: 'right', cursor: 'pointer' }}
+                              onClick={(data) => handleSeniorityClick(data.value)}
+                            />
+                          </PieChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Row 2: Hiring trend */}
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle>מגמת קליטות - 12 חודשים אחרונים</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={hiringTrend}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Line
+                            type="monotone"
+                            dataKey="count"
+                            stroke="hsl(var(--primary))"
+                            strokeWidth={3}
+                            dot={{ fill: 'hsl(var(--primary))', strokeWidth: 2, r: 4 }}
+                            activeDot={{ r: 6 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Seniority trend over time */}
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle>מגמת עובדים לפי רמת Seniority - מינואר 2025</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <LineChart data={seniorityTrend}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="month" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                          <Tooltip />
+                          <Legend
+                            wrapperStyle={{ paddingTop: '10px', fontSize: '12px' }}
+                          />
+                          {seniorityLevels.map((level, index) => (
+                            <Line
+                              key={level.id}
+                              type="monotone"
+                              dataKey={level.name}
+                              stroke={COLORS[index % COLORS.length]}
+                              strokeWidth={2}
+                              dot={{ fill: COLORS[index % COLORS.length], strokeWidth: 2, r: 3 }}
+                              activeDot={{ r: 5 }}
+                            />
+                          ))}
+                          <Line
+                            type="monotone"
+                            dataKey="לא מוגדר"
+                            stroke="hsl(var(--muted-foreground))"
+                            strokeWidth={2}
+                            strokeDasharray="5 5"
+                            dot={{ fill: 'hsl(var(--muted-foreground))', strokeWidth: 2, r: 3 }}
+                            activeDot={{ r: 5 }}
+                          />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Row 3: Bar charts */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  <Card className="glass-card">
+                    <CardHeader>
+                      <CardTitle>התפלגות עובדים לפי עיר (10 הגדולות)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={employeesByCity}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                             <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                            <Tooltip
-                              content={({ active, payload, label }) => {
-                                if (active && payload && payload.length) {
-                                  return (
-                                    <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-                                      <p className="font-medium text-foreground">רמת קריטיות: {label}</p>
-                                      <p className="text-primary">{payload[0].value} עובדים</p>
-                                    </div>
-                                  );
-                                }
-                                return null;
-                              }}
-                            />
+                            <Tooltip content={<CustomTooltip />} />
                             <Bar
                               dataKey="value"
                               fill="hsl(var(--accent))"
                               radius={[4, 4, 0, 0]}
-                              onClick={(data) => handleCriticalityClick(data.name)}
+                              onClick={(data) => handleCityClick(data.name)}
                               style={{ cursor: 'pointer' }}
                             />
                           </BarChart>
@@ -1437,17 +1317,229 @@ export default function Analytics() {
                       </div>
                     </CardContent>
                   </Card>
-                )}
 
-                {employeesByAttritionRisk.length > 0 && (
                   <Card className="glass-card">
                     <CardHeader>
-                      <CardTitle>התפלגות עובדים לפי סיכוי לעזיבה</CardTitle>
+                      <CardTitle>התפלגות עובדים לפי חברה מעסיקה</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="h-80">
                         <ResponsiveContainer width="100%" height="100%">
-                          <BarChart data={employeesByAttritionRisk}>
+                          <BarChart data={employeesByCompany}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <Tooltip content={<CustomTooltip />} />
+                            <Bar
+                              dataKey="value"
+                              fill="hsl(var(--primary))"
+                              radius={[4, 4, 0, 0]}
+                              onClick={(data) => handleCompanyClick(data.name)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Row 4: Average experience by role */}
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle>ממוצע ותק מקצועי לפי תפקיד (שנים)</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={avgExperienceByRole}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                          <Tooltip
+                            content={({ active, payload, label }) => {
+                              if (active && payload && payload.length) {
+                                return (
+                                  <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                    <p className="font-medium text-foreground">{label}</p>
+                                    <p className="text-primary">{payload[0].value} שנים</p>
+                                  </div>
+                                );
+                              }
+                              return null;
+                            }}
+                          />
+                          <Bar dataKey="average" fill="hsl(280, 65%, 60%)" radius={[4, 4, 0, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Row 5: Cost charts (managers only) */}
+                {isManager && (costByProject.length > 0 || costByBranch.length > 0) && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {costByProject.length > 0 && (
+                      <Card className="glass-card">
+                        <CardHeader>
+                          <CardTitle>עלות חודשית לפי תכנית</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={costByProject}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <Tooltip
+                                  content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                          <p className="font-medium text-foreground">{label}</p>
+                                          <p className="text-primary" dir="ltr">₪{payload[0].value?.toLocaleString()}</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar dataKey="cost" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {costByBranch.length > 0 && (
+                      <Card className="glass-card">
+                        <CardHeader>
+                          <CardTitle>עלות חודשית לפי ענף</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={costByBranch}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <Tooltip
+                                  content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                          <p className="font-medium text-foreground">{label}</p>
+                                          <p className="text-primary" dir="ltr">₪{payload[0].value?.toLocaleString()}</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar dataKey="cost" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+
+                {/* Row: Criticality and Attrition Risk charts (managers only) */}
+                {isManager && (employeesByCriticality.length > 0 || employeesByAttritionRisk.length > 0) && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {employeesByCriticality.length > 0 && (
+                      <Card className="glass-card">
+                        <CardHeader>
+                          <CardTitle>התפלגות עובדים לפי קריטיות ליחידה</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={employeesByCriticality}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <Tooltip
+                                  content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                          <p className="font-medium text-foreground">רמת קריטיות: {label}</p>
+                                          <p className="text-primary">{payload[0].value} עובדים</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar
+                                  dataKey="value"
+                                  fill="hsl(var(--accent))"
+                                  radius={[4, 4, 0, 0]}
+                                  onClick={(data) => handleCriticalityClick(data.name)}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {employeesByAttritionRisk.length > 0 && (
+                      <Card className="glass-card">
+                        <CardHeader>
+                          <CardTitle>התפלגות עובדים לפי סיכוי לעזיבה</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={employeesByAttritionRisk}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                <Tooltip
+                                  content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                          <p className="font-medium text-foreground">רמת סיכוי: {label}</p>
+                                          <p className="text-primary">{payload[0].value} עובדים</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar
+                                  dataKey="value"
+                                  fill="hsl(var(--destructive))"
+                                  radius={[4, 4, 0, 0]}
+                                  onClick={(data) => handleAttritionRiskClick(data.name)}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+
+                {/* Row: Attention Score chart (managers only) - full width */}
+                {isManager && employeesByAttentionScore.length > 0 && (
+                  <Card className="glass-card">
+                    <CardHeader>
+                      <CardTitle>עובדים הדורשים טיפול (קריטיות × סיכוי לעזיבה)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={employeesByAttentionScore}>
                             <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                             <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                             <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -1456,7 +1548,7 @@ export default function Analytics() {
                                 if (active && payload && payload.length) {
                                   return (
                                     <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-                                      <p className="font-medium text-foreground">רמת סיכוי: {label}</p>
+                                      <p className="font-medium text-foreground">ציון דחיפות: {label}</p>
                                       <p className="text-primary">{payload[0].value} עובדים</p>
                                     </div>
                                   );
@@ -1466,9 +1558,9 @@ export default function Analytics() {
                             />
                             <Bar
                               dataKey="value"
-                              fill="hsl(var(--destructive))"
+                              fill="hsl(var(--warning))"
                               radius={[4, 4, 0, 0]}
-                              onClick={(data) => handleAttritionRiskClick(data.name)}
+                              onClick={(data) => handleAttentionScoreClick(data.name)}
                               style={{ cursor: 'pointer' }}
                             />
                           </BarChart>
@@ -1477,276 +1569,236 @@ export default function Analytics() {
                     </CardContent>
                   </Card>
                 )}
+
+                {/* Leaving Reason distribution chart */}
+                {employeesByLeavingReason.length > 0 && (
+                  <Card className="glass-card">
+                    <CardHeader>
+                      <CardTitle>התפלגות עובדים לפי סיבת רצון לעזוב</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={employeesByLeavingReason}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                  return (
+                                    <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                      <p className="font-medium text-foreground">{label}</p>
+                                      <p className="text-primary">{payload[0].value} עובדים</p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Bar
+                              dataKey="value"
+                              fill="hsl(330, 70%, 50%)"
+                              radius={[4, 4, 0, 0]}
+                              onClick={(data) => handleLeavingReasonClick(data.name)}
+                              style={{ cursor: 'pointer' }}
+                            />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Row 6: Cost by company chart (managers only) */}
+                {isManager && costByCompany.length > 0 && (
+                  <Card className="glass-card">
+                    <CardHeader>
+                      <CardTitle>עלות חודשית לפי חברה מעסיקה</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-80">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={costByCompany}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                            <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                            <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                  return (
+                                    <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                      <p className="font-medium text-foreground">{label}</p>
+                                      <p className="text-primary" dir="ltr">₪{payload[0].value?.toLocaleString()}</p>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Bar dataKey="cost" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
               </div>
-            )}
 
-            {/* Row: Attention Score chart (managers only) - full width */}
-            {isManager && employeesByAttentionScore.length > 0 && (
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle>עובדים הדורשים טיפול (קריטיות × סיכוי לעזיבה)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={employeesByAttentionScore}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <Tooltip
-                          content={({ active, payload, label }) => {
-                            if (active && payload && payload.length) {
-                              return (
-                                <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-                                  <p className="font-medium text-foreground">ציון דחיפות: {label}</p>
-                                  <p className="text-primary">{payload[0].value} עובדים</p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar
-                          dataKey="value"
-                          fill="hsl(var(--warning))"
-                          radius={[4, 4, 0, 0]}
-                          onClick={(data) => handleAttentionScoreClick(data.name)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+              {/* Super Admin Exclusive Dashboard */}
+              {isSuperAdmin && superAdminMetrics && (
+                <div className="space-y-6 mt-8">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-8 w-1 bg-destructive rounded-full" />
+                    <h2 className="text-xl font-semibold text-foreground">דשבורד מנהלי על בלבד</h2>
                   </div>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Leaving Reason distribution chart */}
-            {employeesByLeavingReason.length > 0 && (
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle>התפלגות עובדים לפי סיבת רצון לעזוב</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={employeesByLeavingReason}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <Tooltip
-                          content={({ active, payload, label }) => {
-                            if (active && payload && payload.length) {
-                              return (
-                                <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-                                  <p className="font-medium text-foreground">{label}</p>
-                                  <p className="text-primary">{payload[0].value} עובדים</p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar
-                          dataKey="value"
-                          fill="hsl(330, 70%, 50%)"
-                          radius={[4, 4, 0, 0]}
-                          onClick={(data) => handleLeavingReasonClick(data.name)}
-                          style={{ cursor: 'pointer' }}
-                        />
-                      </BarChart>
-                    </ResponsiveContainer>
+                  {/* Summary Cards */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <Card className="glass-card border-destructive/30">
+                      <CardContent className="p-4 text-center">
+                        <p className="text-sm text-muted-foreground mb-1">סה"כ עלויות חודשיות</p>
+                        <p className="text-2xl font-bold text-foreground" dir="ltr">
+                          ₪{superAdminMetrics.totalCost.toLocaleString()}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="glass-card border-destructive/30">
+                      <CardContent className="p-4 text-center">
+                        <p className="text-sm text-muted-foreground mb-1">סה"כ שכר משוער</p>
+                        <p className="text-2xl font-bold text-foreground" dir="ltr">
+                          ₪{Math.round(superAdminMetrics.totalEstimatedSalary).toLocaleString()}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="glass-card border-destructive/30">
+                      <CardContent className="p-4 text-center">
+                        <p className="text-sm text-muted-foreground mb-1">עובדי דלת מסתובבת</p>
+                        <p className="text-2xl font-bold text-destructive">
+                          {superAdminMetrics.revolvingDoorCount}
+                        </p>
+                      </CardContent>
+                    </Card>
+                    <Card className="glass-card border-destructive/30">
+                      <CardContent className="p-4 text-center">
+                        <p className="text-sm text-muted-foreground mb-1">פער שכר ממוצע</p>
+                        <p className={`text-2xl font-bold ${superAdminMetrics.avgSalaryGap >= 0 ? 'text-destructive' : 'text-green-500'}`} dir="ltr">
+                          ₪{Math.round(superAdminMetrics.avgSalaryGap).toLocaleString()}
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {superAdminMetrics.avgSalaryGap >= 0 ? '(שוק גבוה יותר)' : '(אנחנו משלמים יותר)'}
+                        </p>
+                      </CardContent>
+                    </Card>
                   </div>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Row 6: Cost by company chart (managers only) */}
-            {isManager && costByCompany.length > 0 && (
-              <Card className="glass-card">
-                <CardHeader>
-                  <CardTitle>עלות חודשית לפי חברה מעסיקה</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="h-80">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={costByCompany}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                        <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                        <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                        <Tooltip
-                          content={({ active, payload, label }) => {
-                            if (active && payload && payload.length) {
-                              return (
-                                <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-                                  <p className="font-medium text-foreground">{label}</p>
-                                  <p className="text-primary" dir="ltr">₪{payload[0].value?.toLocaleString()}</p>
-                                </div>
-                              );
-                            }
-                            return null;
-                          }}
-                        />
-                        <Bar dataKey="cost" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
+                  {/* Salary Distribution Chart */}
+                  {salaryDistribution.length > 0 && (
+                    <Card className="glass-card border-destructive/30">
+                      <CardHeader>
+                        <CardTitle>התפלגות שכר משוער</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-80">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={salaryDistribution}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                              <Tooltip
+                                content={({ active, payload, label }) => {
+                                  if (active && payload && payload.length) {
+                                    return (
+                                      <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                        <p className="font-medium text-foreground">טווח שכר: {label}</p>
+                                        <p className="text-primary">{payload[0].value} עובדים</p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Bar
+                                dataKey="value"
+                                fill="hsl(var(--destructive))"
+                                radius={[4, 4, 0, 0]}
+                                cursor="pointer"
+                                onClick={(data) => {
+                                  if (data && data.name) {
+                                    setSelectedSalaryRange(data.name);
+                                    setIsSalaryRangeDialogOpen(true);
+                                  }
+                                }}
+                              />
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
+
+                  {/* Salary Gap Distribution Chart */}
+                  {salaryGapDistribution.length > 0 && (
+                    <Card className="glass-card border-destructive/30">
+                      <CardHeader>
+                        <CardTitle>התפלגות פער שכר (משוער מול שוק)</CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-80">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <BarChart data={salaryGapDistribution}>
+                              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                              <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                              <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                              <Tooltip
+                                content={({ active, payload, label }) => {
+                                  if (active && payload && payload.length) {
+                                    const data = payload[0].payload;
+                                    return (
+                                      <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                        <p className="font-medium text-foreground">{label}</p>
+                                        <p className={data.isNegative ? 'text-destructive' : 'text-green-500'}>
+                                          {payload[0].value} עובדים
+                                        </p>
+                                      </div>
+                                    );
+                                  }
+                                  return null;
+                                }}
+                              />
+                              <Bar
+                                dataKey="value"
+                                radius={[4, 4, 0, 0]}
+                                cursor="pointer"
+                                onClick={(data) => {
+                                  if (data && data.name) {
+                                    setSelectedSalaryGap(data.name);
+                                    setIsSalaryGapDialogOpen(true);
+                                  }
+                                }}
+                              >
+                                {salaryGapDistribution.map((entry, index) => (
+                                  <Cell
+                                    key={`cell-${index}`}
+                                    fill={entry.isNegative ? 'hsl(var(--destructive))' : 'hsl(142, 76%, 36%)'}
+                                  />
+                                ))}
+                              </Bar>
+                            </BarChart>
+                          </ResponsiveContainer>
+                        </div>
+                        <p className="text-xs text-muted-foreground text-center mt-2">
+                          אדום = אנחנו משלמים יותר מהשוק | ירוק = השוק משלם יותר
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
+                </div>
+              )}
+            </div>
           </div>
         )}
       </div>
-
-      {/* Super Admin Exclusive Dashboard */}
-      {isSuperAdmin && superAdminMetrics && (
-        <div className="space-y-6 mt-8">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="h-8 w-1 bg-destructive rounded-full" />
-            <h2 className="text-xl font-semibold text-foreground">דשבורד מנהלי על בלבד</h2>
-          </div>
-
-          {/* Summary Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <Card className="glass-card border-destructive/30">
-              <CardContent className="p-4 text-center">
-                <p className="text-sm text-muted-foreground mb-1">סה"כ עלויות חודשיות</p>
-                <p className="text-2xl font-bold text-foreground" dir="ltr">
-                  ₪{superAdminMetrics.totalCost.toLocaleString()}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="glass-card border-destructive/30">
-              <CardContent className="p-4 text-center">
-                <p className="text-sm text-muted-foreground mb-1">סה"כ שכר משוער</p>
-                <p className="text-2xl font-bold text-foreground" dir="ltr">
-                  ₪{Math.round(superAdminMetrics.totalEstimatedSalary).toLocaleString()}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="glass-card border-destructive/30">
-              <CardContent className="p-4 text-center">
-                <p className="text-sm text-muted-foreground mb-1">עובדי דלת מסתובבת</p>
-                <p className="text-2xl font-bold text-destructive">
-                  {superAdminMetrics.revolvingDoorCount}
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="glass-card border-destructive/30">
-              <CardContent className="p-4 text-center">
-                <p className="text-sm text-muted-foreground mb-1">פער שכר ממוצע</p>
-                <p className={`text-2xl font-bold ${superAdminMetrics.avgSalaryGap >= 0 ? 'text-destructive' : 'text-green-500'}`} dir="ltr">
-                  ₪{Math.round(superAdminMetrics.avgSalaryGap).toLocaleString()}
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {superAdminMetrics.avgSalaryGap >= 0 ? '(שוק גבוה יותר)' : '(אנחנו משלמים יותר)'}
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-
-          {/* Salary Distribution Chart */}
-          {salaryDistribution.length > 0 && (
-            <Card className="glass-card border-destructive/30">
-              <CardHeader>
-                <CardTitle>התפלגות שכר משוער</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={salaryDistribution}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <Tooltip
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length) {
-                            return (
-                              <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-                                <p className="font-medium text-foreground">טווח שכר: {label}</p>
-                                <p className="text-primary">{payload[0].value} עובדים</p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Bar
-                        dataKey="value"
-                        fill="hsl(var(--destructive))"
-                        radius={[4, 4, 0, 0]}
-                        cursor="pointer"
-                        onClick={(data) => {
-                          if (data && data.name) {
-                            setSelectedSalaryRange(data.name);
-                            setIsSalaryRangeDialogOpen(true);
-                          }
-                        }}
-                      />
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-
-          {/* Salary Gap Distribution Chart */}
-          {salaryGapDistribution.length > 0 && (
-            <Card className="glass-card border-destructive/30">
-              <CardHeader>
-                <CardTitle>התפלגות פער שכר (משוער מול שוק)</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="h-80">
-                  <ResponsiveContainer width="100%" height="100%">
-                    <BarChart data={salaryGapDistribution}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                      <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
-                      <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                      <Tooltip
-                        content={({ active, payload, label }) => {
-                          if (active && payload && payload.length) {
-                            const data = payload[0].payload;
-                            return (
-                              <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
-                                <p className="font-medium text-foreground">{label}</p>
-                                <p className={data.isNegative ? 'text-destructive' : 'text-green-500'}>
-                                  {payload[0].value} עובדים
-                                </p>
-                              </div>
-                            );
-                          }
-                          return null;
-                        }}
-                      />
-                      <Bar
-                        dataKey="value"
-                        radius={[4, 4, 0, 0]}
-                        cursor="pointer"
-                        onClick={(data) => {
-                          if (data && data.name) {
-                            setSelectedSalaryGap(data.name);
-                            setIsSalaryGapDialogOpen(true);
-                          }
-                        }}
-                      >
-                        {salaryGapDistribution.map((entry, index) => (
-                          <Cell
-                            key={`cell-${index}`}
-                            fill={entry.isNegative ? 'hsl(var(--destructive))' : 'hsl(142, 76%, 36%)'}
-                          />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </div>
-                <p className="text-xs text-muted-foreground text-center mt-2">
-                  אדום = אנחנו משלמים יותר מהשוק | ירוק = השוק משלם יותר
-                </p>
-              </CardContent>
-            </Card>
-          )}
-        </div>
-      )}
 
 
 
@@ -2331,195 +2383,199 @@ export default function Analytics() {
 
       {/* Employee Detail Dialog */}
       <Dialog open={isEmployeeDetailDialogOpen} onOpenChange={setIsEmployeeDetailDialogOpen}>
-        <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden">
+        <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden" dir="rtl">
           <DialogHeader className="text-right flex-shrink-0">
-            <DialogTitle className="text-right">פרטי עובד</DialogTitle>
+            <DialogTitle className="text-right flex items-center gap-2">
+              <Users className="w-5 h-5 text-primary" />
+              פרטי עובד: {selectedEmployee?.full_name}
+            </DialogTitle>
+            <DialogDescription className="text-right">צפייה בפרטי העובד</DialogDescription>
           </DialogHeader>
+
           {selectedEmployee && (
-            <>
+            <Tabs defaultValue="general" dir="rtl" className="flex-1 flex flex-col overflow-hidden">
+              <TabsList className="grid w-full grid-cols-3 gap-2 mb-6 bg-transparent h-auto p-0 shrink-0">
+                <TabsTrigger
+                  value="general"
+                  className="py-2.5 px-4 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:hover:bg-muted transition-all"
+                >
+                  כללי
+                </TabsTrigger>
+                <TabsTrigger
+                  value="performance"
+                  className="py-2.5 px-4 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:hover:bg-muted transition-all"
+                >
+                  ביצועים ושכר
+                </TabsTrigger>
+                <TabsTrigger
+                  value="retention"
+                  className="py-2.5 px-4 rounded-md border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=inactive]:bg-background data-[state=inactive]:hover:bg-muted transition-all"
+                >
+                  שימור
+                </TabsTrigger>
+              </TabsList>
+
               <ScrollArea className="flex-1 overflow-y-auto pr-4">
-                <div className="grid gap-4 py-4">
-                  {/* Row 1: Full Name and Role */}
-                  <div className="grid grid-cols-2 gap-4">
+                <TabsContent value="general" className="space-y-4 m-0 outline-none pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">תפקיד</label>
-                      <div className="p-2 bg-muted rounded-md text-right">
-                        {getRoleName(selectedEmployee.job_role_id)}
-                      </div>
+                      <Label>שם מלא</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.full_name || ''} disabled />
                     </div>
                     <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">שם מלא</label>
-                      <div className="p-2 bg-muted rounded-md text-right">
-                        {selectedEmployee.full_name}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 2: Project and Branch */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">תכנית</label>
-                      <div className="p-2 bg-muted rounded-md text-right">
-                        {getProjectName(selectedEmployee.project_id)}
-                      </div>
+                      <Label>תפקיד</Label>
+                      <Input className="text-right bg-muted" value={getRoleName(selectedEmployee.job_role_id, roles)} disabled />
                     </div>
                     <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">ענף</label>
-                      <div className="p-2 bg-muted rounded-md text-right">
-                        {getBranchName(selectedEmployee.branch_id)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 3: Company and Experience */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">חברה מעסיקה</label>
-                      <div className="p-2 bg-muted rounded-md text-right">
-                        {getEmployingCompanyName(selectedEmployee.employing_company_id)}
-                      </div>
+                      <Label>תכנית</Label>
+                      <Input className="text-right bg-muted" value={getProjectName(selectedEmployee.project_id, projects)} disabled />
                     </div>
                     <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">ותק במקצוע (שנים)</label>
-                      <div className="p-2 bg-muted rounded-md text-right" dir="ltr">
-                        {selectedEmployee.professional_experience_years?.toString() || '0'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 4: City and Start Date */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">עיר מגורים</label>
-                      <div className="p-2 bg-muted rounded-md text-right">
-                        {selectedEmployee.city || '-'}
-                      </div>
+                      <Label>ענף</Label>
+                      <Input className="text-right bg-muted" value={getBranchName(selectedEmployee.branch_id, branches)} disabled />
                     </div>
                     <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">תאריך תחילת עבודה ביחידה</label>
-                      <div className="p-2 bg-muted rounded-md text-right" dir="ltr">
-                        {selectedEmployee.start_date ? new Date(selectedEmployee.start_date).toLocaleDateString('he-IL') : '-'}
-                      </div>
+                      <Label>חברה מעסיקה</Label>
+                      <Input className="text-right bg-muted" value={getEmployingCompanyName(selectedEmployee.employing_company_id, companies)} disabled />
+                    </div>
+                    <div className="space-y-2 text-right">
+                      <Label>ותק במקצוע (שנים)</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.professional_experience_years?.toString() || '0'} disabled dir="ltr" />
+                    </div>
+                    <div className="space-y-2 text-right">
+                      <Label>עיר מגורים</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.city || '-'} disabled />
+                    </div>
+                    <div className="space-y-2 text-right">
+                      <Label>תאריך תחילת עבודה ביחידה</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.start_date ? new Date(selectedEmployee.start_date).toLocaleDateString('he-IL') : '-'} disabled dir="ltr" />
+                    </div>
+                    <div className="space-y-2 text-right">
+                      <Label>תאריך לידה</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.birth_date ? new Date(selectedEmployee.birth_date).toLocaleDateString('he-IL') : '-'} disabled dir="ltr" />
+                    </div>
+                    <div className="space-y-2 text-right">
+                      <Label>מספר טלפון</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.phone || '-'} disabled dir="ltr" />
+                    </div>
+                    <div className="space-y-2 text-right col-span-2">
+                      <Label>טלפון חירום</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.emergency_phone || '-'} disabled dir="ltr" />
                     </div>
                   </div>
+                </TabsContent>
 
-                  {/* Row 5: Birth Date and Phone */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">תאריך לידה</label>
-                      <div className="p-2 bg-muted rounded-md text-right" dir="ltr">
-                        {selectedEmployee.birth_date ? new Date(selectedEmployee.birth_date).toLocaleDateString('he-IL') : '-'}
-                      </div>
+                <TabsContent value="performance" className="space-y-4 m-0 outline-none pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right col-span-2">
+                      <Label>סניוריטי</Label>
+                      <Input className="text-right bg-muted" value={getSeniorityLevelName(selectedEmployee.seniority_level_id, seniorityLevels)} disabled />
                     </div>
-                    <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">מספר טלפון</label>
-                      <div className="p-2 bg-muted rounded-md text-right" dir="ltr">
-                        {selectedEmployee.phone || '-'}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 6: Emergency Phone and Seniority */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">טלפון חירום</label>
-                      <div className="p-2 bg-muted rounded-md text-right" dir="ltr">
-                        {selectedEmployee.emergency_phone || '-'}
-                      </div>
-                    </div>
-                    <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">סניוריטי</label>
-                      <div className="p-2 bg-muted rounded-md text-right">
-                        {getSeniorityLevelName(selectedEmployee.seniority_level_id)}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Row 7: LinkedIn URL */}
-                  <div className="grid grid-cols-1 gap-4">
-                    <div className="space-y-2 text-right">
-                      <label className="text-sm font-medium">קישור ללינקדאין</label>
+                    <div className="space-y-2 text-right col-span-2">
+                      <Label>קישור ללינקדאין</Label>
                       {selectedEmployee.linkedin_url ? (
-                        <a
-                          href={selectedEmployee.linkedin_url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="block p-2 bg-muted rounded-md text-left text-primary hover:underline"
-                          dir="ltr"
-                        >
+                        <a href={selectedEmployee.linkedin_url} target="_blank" rel="noopener noreferrer" className="block p-2 bg-muted rounded-md text-right text-primary hover:underline">
                           {selectedEmployee.linkedin_url}
                         </a>
                       ) : (
-                        <div className="p-2 bg-muted rounded-md text-right">-</div>
+                        <Input className="text-right bg-muted" value="-" disabled />
                       )}
                     </div>
+                    <div className="space-y-2 text-right">
+                      <Label>איתור שלנו?</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.our_sourcing === true ? 'כן' : selectedEmployee.our_sourcing === false ? 'לא' : '-'} disabled />
+                    </div>
+                    <div className="space-y-2 text-right">
+                      <Label>דלת מסתובבת</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.revolving_door === true ? 'כן' : selectedEmployee.revolving_door === false ? 'לא' : '-'} disabled />
+                    </div>
+
+                    {(isManager || isSuperAdmin) && (
+                      <>
+                        <div className="space-y-2 text-right col-span-2">
+                          <Label>עלות העובד בחודש (₪) - כולל מע"מ</Label>
+                          <Input className="text-right bg-muted" value={selectedEmployee.cost ? `₪${formatToHebrewNumber(selectedEmployee.cost)}` : '-'} disabled dir="ltr" />
+                        </div>
+                        <div className="space-y-2 text-right">
+                          <Label>שכר חודשי משוער (₪)</Label>
+                          <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee.cost ? `₪${formatToHebrewNumber(selectedEmployee.cost / 1.4 / 1.1 / 1.18)}` : '-'}
+                            disabled
+                            dir="ltr"
+                          />
+                        </div>
+                        <div className="space-y-2 text-right">
+                          <Label>שכר חודשי ריאלי בשוק (₪)</Label>
+                          <Input className="text-right bg-muted" value={selectedEmployee.real_market_salary ? `₪${formatToHebrewNumber(selectedEmployee.real_market_salary)}` : '-'} disabled dir="ltr" />
+                        </div>
+                        <div className="space-y-2 text-right">
+                          <Label>תאריך העלאת שכר</Label>
+                          <Input className="text-right bg-muted" value={selectedEmployee.salary_raise_date ? new Date(selectedEmployee.salary_raise_date).toLocaleDateString('he-IL') : '-'} disabled dir="ltr" />
+                        </div>
+                        <div className="space-y-2 text-right">
+                          <Label>אחוז העלאת שכר (%)</Label>
+                          <Input className="text-right bg-muted" value={selectedEmployee.salary_raise_percentage ? `${formatToHebrewNumber(selectedEmployee.salary_raise_percentage)}%` : '-'} disabled dir="ltr" />
+                        </div>
+                        <div className="space-y-2 text-right">
+                          <Label>ביצועי העובד</Label>
+                          <Input className="text-right bg-muted" value={getPerformanceLevelName(selectedEmployee.performance_level_id, performanceLevels)} disabled />
+                        </div>
+                        <div className="space-y-2 text-right">
+                          <Label>תאריך עדכון ביצועים</Label>
+                          <Input className="text-right bg-muted" value={selectedEmployee.performance_update_date ? new Date(selectedEmployee.performance_update_date).toLocaleDateString('he-IL') : '-'} disabled dir="ltr" />
+                        </div>
+                      </>
+                    )}
                   </div>
+                </TabsContent>
 
-                  {/* Manager-only fields */}
-                  {isManager && (
-                    <>
-                      {/* Row 6: Cost and Attrition Risk */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 text-right">
-                          <label className="text-sm font-medium">עלות העובד בחודש (₪) - כולל מע"מ</label>
-                          <div className="p-2 bg-muted rounded-md text-right" dir="ltr">
-                            {selectedEmployee.cost ? `₪${selectedEmployee.cost.toLocaleString()}` : '-'}
-                          </div>
-                        </div>
-                        <div className="space-y-2 text-right">
-                          <label className="text-sm font-medium">סיכוי לעזיבה (0-5)</label>
-                          <div className="p-2 bg-muted rounded-md text-right">
-                            {getAttritionRiskLabel(selectedEmployee.attrition_risk)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Row 7: Attrition Reason */}
-                      <div className="space-y-2 text-right">
-                        <label className="text-sm font-medium">סיבת רצון לעזוב - מלל חופשי</label>
-                        <div className="p-2 bg-muted rounded-md text-right">
-                          {selectedEmployee.attrition_risk_reason || '-'}
-                        </div>
-                      </div>
-
-                      {/* Row 8: Salary Raise Date and Criticality */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 text-right">
-                          <label className="text-sm font-medium">תאריך העלאת שכר</label>
-                          <div className="p-2 bg-muted rounded-md text-right" dir="ltr">
-                            {selectedEmployee.salary_raise_date ? new Date(selectedEmployee.salary_raise_date).toLocaleDateString('he-IL') : '-'}
-                          </div>
-                        </div>
-                        <div className="space-y-2 text-right">
-                          <label className="text-sm font-medium">קריטיות ליחידה (0-5)</label>
-                          <div className="p-2 bg-muted rounded-md text-right">
-                            {getCriticalityLabel(selectedEmployee.unit_criticality)}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Row 9: Salary Raise Percentage */}
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2 text-right">
-                          <label className="text-sm font-medium">אחוז העלאת שכר (%)</label>
-                          <div className="p-2 bg-muted rounded-md text-right" dir="ltr">
-                            {selectedEmployee.salary_raise_percentage ? `${selectedEmployee.salary_raise_percentage}%` : '-'}
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
+                <TabsContent value="retention" className="space-y-4 m-0 outline-none pb-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-2 text-right col-span-2">
+                      <Label>קריטיות ליחידה (0-5)</Label>
+                      <Input className="text-right bg-muted" value={getCriticalityLabel(selectedEmployee.unit_criticality)} disabled />
+                    </div>
+                    <div className="space-y-2 text-right">
+                      <Label>סיכוי לעזוב - לדעת היחידה (0-5)</Label>
+                      <Input className="text-right bg-muted" value={getAttritionRiskLabel(selectedEmployee.attrition_risk)} disabled />
+                    </div>
+                    <div className="space-y-2 text-right">
+                      <Label>סיבת רצון לעזוב - קטגוריות</Label>
+                      <Input className="text-right bg-muted" value={getLeavingReasonName(selectedEmployee.leaving_reason_id, leavingReasons)} disabled />
+                    </div>
+                    <div className="space-y-2 text-right col-span-2">
+                      <Label>סיבת רצון לעזוב - מלל חופשי</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.attrition_risk_reason || '-'} disabled />
+                    </div>
+                    <div className="space-y-2 text-right col-span-2">
+                      <Label>תכנית שימור - מבחינת היחידה</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.retention_plan || '-'} disabled />
+                    </div>
+                    <div className="space-y-2 text-right col-span-2">
+                      <Label>לגייס במקומו?</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.replacement_needed || '-'} disabled />
+                    </div>
+                    <div className="space-y-2 text-right col-span-2">
+                      <Label>סיכוי לעזוב - לדעת החברה (0-5)</Label>
+                      <Input className="text-right bg-muted" value={getAttritionRiskLabel(selectedEmployee.company_attrition_risk)} disabled />
+                    </div>
+                    <div className="space-y-2 text-right col-span-2">
+                      <Label>התיחסות חברה למעבר דרומה</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.company_retention_plan || '-'} disabled />
+                    </div>
+                  </div>
+                </TabsContent>
               </ScrollArea>
-              <div className="mt-4 pt-4 border-t flex justify-start">
-                <Button variant="outline" onClick={() => setIsEmployeeDetailDialogOpen(false)}>
-                  סגור
-                </Button>
-              </div>
-            </>
+
+              <DialogFooter className="mt-4 pt-4 border-t flex justify-start gap-2 flex-row-reverse">
+                <Button variant="outline" onClick={() => setIsEmployeeDetailDialogOpen(false)}>סגור</Button>
+              </DialogFooter>
+            </Tabs>
           )}
         </DialogContent>
       </Dialog>
-    </MainLayout>
+
+    </MainLayout >
   );
 }

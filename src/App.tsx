@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Dashboard from "./pages/Dashboard";
 import Analytics from "./pages/Analytics";
+import MovingSouth from "./pages/MovingSouth";
 import AiAssistant from "./pages/AiAssistant";
 import Auth from "./pages/Auth";
 import Employees from "./pages/Employees";
@@ -31,6 +32,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/analytics" element={<Analytics />} />
+            <Route path="/moving-south" element={<MovingSouth />} />
             <Route path="/ai-assistant" element={<AiAssistant />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/employees" element={<Employees />} />

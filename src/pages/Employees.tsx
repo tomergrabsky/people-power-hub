@@ -230,7 +230,7 @@ export default function Employees() {
     leaving_reason_id: 'סיבת רצון לעזוב - קטגוריות',
     performance_level_id: 'ביצועי העובד',
     performance_update_date: 'תאריך עדכון ביצועים',
-    replacement_needed: 'נדרשת החלפה?',
+    replacement_needed: 'לגייס במקומו?',
   };
 
   // Manager-only columns
@@ -1263,11 +1263,11 @@ export default function Employees() {
     },
     {
       id: 'row_replacement_needed',
-      label: 'נדרשת החלפה?',
+      label: 'לגייס במקומו?',
       isManagerOnly: true,
       component: (
         <div className="space-y-2 text-right">
-          <Label htmlFor="replacement_needed">נדרשת החלפה?</Label>
+          <Label htmlFor="replacement_needed">לגייס במקומו?</Label>
           <Select
             value={formData.replacement_needed}
             onValueChange={(value) => setFormData({ ...formData, replacement_needed: value })}
@@ -1706,11 +1706,11 @@ export default function Employees() {
     },
     {
       id: 'row_replacement_needed',
-      label: 'נדרשת החלפה?',
+      label: 'לגייס במקומו?',
       isManagerOnly: true,
       component: (
         <div className="space-y-2 text-right">
-          <Label>נדרשת החלפה?</Label>
+          <Label>לגייס במקומו?</Label>
           <Input
             className="text-right bg-muted"
             value={(selectedEmployee as any)?.replacement_needed || '-'}

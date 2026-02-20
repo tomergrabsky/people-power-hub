@@ -27,13 +27,15 @@ import {
   BarChart3,
   GitBranch,
   DoorOpen,
-  Bot
+  Bot,
+  MapPin
 } from 'lucide-react';
 
 const mainNavItems = [
   { title: 'בית', url: '/', icon: LayoutDashboard },
   { title: 'עובדים', url: '/employees', icon: Users },
   { title: 'דשבורדים ויזואליים', url: '/analytics', icon: BarChart3 },
+  { title: 'מעבר דרומה', url: '/moving-south', icon: MapPin },
   { title: 'עוזר AI', url: '/ai-assistant', icon: Bot },
 ];
 
