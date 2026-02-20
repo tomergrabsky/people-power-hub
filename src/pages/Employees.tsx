@@ -290,14 +290,14 @@ export default function Employees() {
     'row_emergency_seniority',
     'row_linkedin',
     'row_revolving_door',
-    'row_cost',
-    'row_salarydate_criticality',
-    'row_salary_percentage',
     'row_unit_attrition',
     'row_attrition_reason',
     'row_leaving_reason',
     'row_retention_plan',
     'row_company_retention_plan',
+    'row_cost',
+    'row_salarydate_criticality',
+    'row_salary_percentage',
     'row_salary_estimates',
   ], []);
 
