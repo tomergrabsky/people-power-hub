@@ -39,7 +39,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (docSnap.exists()) {
         setRole(docSnap.data().role as AppRole);
       } else {
-        setRole('user'); // Default role
+        // If the user logs in via Google the first time, they won't have a role,
+        // create a default role for them and their profile.
+        await setDoc(roleRef, { role: 'user' }, { merge: true });
+
+        const profileRef = doc(db, 'profiles', userId);
+        const profileSnap = await getDoc(profileRef);
+        if (!profileSnap.exists()) {
+          await setDoc(profileRef, {
+            user_id: userId,
+            email: auth.currentUser?.email || '',
+            full_name: auth.currentUser?.displayName || '',
+            created_at: new Date().toISOString()
+          }, { merge: true });
+        }
+        setRole('user');
       }
     } catch (e) {
       console.error("Error fetching role", e);
