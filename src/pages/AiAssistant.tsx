@@ -8,13 +8,15 @@ import {
     BarChart, Bar, XAxis, YAxis, Tooltip as RechartsTooltip, ResponsiveContainer,
     PieChart, Pie, Cell, CartesianGrid, Legend
 } from "recharts";
+import { db } from "@/integrations/firebase/client";
+import { collection, getDocs } from "firebase/firestore";
 
 
 type MessageOutput =
     | { type: "text"; text: string }
     | { type: "number"; title: string; value: string | number }
-    | { type: "bar"; title: string; data: any[]; xKey: string; yKey: string }
-    | { type: "pie"; title: string; data: any[]; nameKey: string; valueKey: string };
+    | { type: "bar"; title: string; data: Record<string, unknown>[]; xKey: string; yKey: string }
+    | { type: "pie"; title: string; data: Record<string, unknown>[]; nameKey: string; valueKey: string };
 
 type Message = {
     id: string;
@@ -85,10 +87,67 @@ export default function AiAssistant() {
     const [input, setInput] = useState("");
     const [isLoading, setIsLoading] = useState(false);
     const messagesEndRef = useRef<HTMLDivElement>(null);
+    const [dbData, setDbData] = useState<string>("");
 
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }, [messages]);
+
+    useEffect(() => {
+        const fetchAllData = async () => {
+            try {
+                const [employeesRes, jobRolesRes, projectsRes, branchesRes, employingCompaniesRes, seniorityLevelsRes, performanceLevelsRes, leavingReasonsRes] = await Promise.all([
+                    getDocs(collection(db, 'employees')),
+                    getDocs(collection(db, 'job_roles')),
+                    getDocs(collection(db, 'projects')),
+                    getDocs(collection(db, 'branches')),
+                    getDocs(collection(db, 'employing_companies')),
+                    getDocs(collection(db, 'seniority_levels')),
+                    getDocs(collection(db, 'performance_levels')),
+                    getDocs(collection(db, 'leaving_reasons')),
+                ]);
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const mapDocs = (snap: import('firebase/firestore').QuerySnapshot) => snap.docs.map((doc) => ({ id: doc.id, ...doc.data() as any }));
+
+                const jobRoles = mapDocs(jobRolesRes);
+                const projects = mapDocs(projectsRes);
+                const branches = mapDocs(branchesRes);
+                const employingCompanies = mapDocs(employingCompaniesRes);
+                const seniorityLevels = mapDocs(seniorityLevelsRes);
+                const performanceLevels = mapDocs(performanceLevelsRes);
+                const leavingReasons = mapDocs(leavingReasonsRes);
+
+                const getLabel = (arr: Record<string, unknown>[], id: string) => arr.find(item => item.id === id)?.name as string || "לא מוגדר";
+
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const employees = mapDocs(employeesRes).map((emp: any) => ({
+                    name: emp.full_name,
+                    role: getLabel(jobRoles, emp.job_role_id),
+                    project: getLabel(projects, emp.project_id),
+                    branch: getLabel(branches, emp.branch_id),
+                    company: getLabel(employingCompanies, emp.employing_company_id),
+                    seniority: getLabel(seniorityLevels, emp.seniority_level_id),
+                    performance: getLabel(performanceLevels, emp.performance_level_id),
+                    leavingReason: getLabel(leavingReasons, emp.leaving_reason_id),
+                    city: emp.city || "לא מוגדר",
+                    attritionRisk: emp.attrition_risk || 0,
+                    criticality: emp.unit_criticality || 0,
+                    cost: emp.cost || 0,
+                    startDate: emp.start_date,
+                    experienceYears: emp.professional_experience_years || 0
+                }));
+
+                setDbData(JSON.stringify(employees));
+            } catch (err) {
+                console.error("Error fetching data for AI context:", err);
+            }
+        };
+
+        if (isKeySaved) {
+            fetchAllData();
+        }
+    }, [isKeySaved]);
 
     const saveApiKey = () => {
         if (!keyInput.trim()) return;
@@ -149,7 +208,35 @@ export default function AiAssistant() {
     };
 
     const fetchGroq = async (query: string): Promise<string> => {
-        return "מצטערים, יכולות ה-AI כרגע מושבתות עקב מעבר מסד הנתונים למערכת NoSQL (Firestore) שאינה תומכת בשאילתות SQL.";
+        const systemPromptWithData = `${SYSTEM_PROMPT}\n\nHere is the current HR database in JSON format:\n\`\`\`json\n${dbData}\n\`\`\`\n\nAnswer the user based ONLY on this data.`;
+
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+                "Authorization": `Bearer ${apiKey}`,
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                    { role: "system", content: systemPromptWithData },
+                    ...messages.filter(m => m.id !== "welcome").map(m => ({
+                        role: m.role,
+                        content: m.content
+                    })),
+                    { role: "user", content: query }
+                ],
+                temperature: 0.1,
+            })
+        });
+
+        if (!response.ok) {
+            const err = await response.json();
+            throw new Error(err.error?.message || "Groq API error");
+        }
+
+        const data = await response.json();
+        return data.choices[0].message.content;
     };
 
     const handleSend = async () => {
@@ -173,12 +260,13 @@ export default function AiAssistant() {
             };
 
             setMessages(prev => [...prev, aiMessage]);
-        } catch (error: any) {
+        } catch (error: unknown) {
             console.error(error);
+            const errorMessage = error instanceof Error ? error.message : "Unknown error";
             setMessages(prev => [...prev, {
                 id: Date.now().toString(),
                 role: "assistant",
-                content: "אירעה שגיאה בחיבור ל-Groq API. " + (error.message || "")
+                content: "אירעה שגיאה בחיבור ל-Groq API. " + errorMessage
             }]);
         } finally {
             setIsLoading(false);

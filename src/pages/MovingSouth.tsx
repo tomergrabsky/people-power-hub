@@ -44,7 +44,7 @@ import {
     DropdownMenuContent,
     DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
-import { Loader2, Filter, X, Users, Eye, Edit, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Settings2, RotateCcw, Move } from 'lucide-react';
+import { Loader2, Filter, X, Users, Eye, Edit, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Settings2, RotateCcw, Move, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useFormFieldOrder } from '@/hooks/useFormFieldOrder';
 import { DraggableFormContainer } from '@/components/employees/DraggableFormContainer';
@@ -1586,18 +1586,45 @@ export default function MovingSouth() {
 
                     <TabsContent value="retention" className="mt-0">
                         {activeTab === 'retention' && (
-                            <DraggableFormContainer
-                                fields={fields.filter(f => retentionRows.includes(f.id))}
-                                fieldOrder={fieldOrder}
-                                onOrderChange={handleSubOrderChange}
-                                onReset={resetOrder}
-                                isDragMode={isDragMode && !disabled}
-                                onToggleDragMode={() => setIsDragMode(!isDragMode)}
-                                isManager={isManager}
-                                isSuperAdmin={isSuperAdmin}
-                                disabled={disabled}
-                                hideControls={true}
-                            />
+                            <div className="space-y-10 py-2">
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 border-b-2 border-primary/20 pb-2 text-primary">
+                                        <Users className="w-5 h-5 flex-shrink-0" />
+                                        <h3 className="text-lg font-bold text-right">נתונים ממפקדים</h3>
+                                    </div>
+                                    <DraggableFormContainer
+                                        fields={fields.filter(f => retentionCommandersRows.includes(f.id))}
+                                        fieldOrder={fieldOrder}
+                                        onOrderChange={handleSubOrderChange}
+                                        onReset={resetOrder}
+                                        isDragMode={isDragMode && !disabled}
+                                        onToggleDragMode={() => setIsDragMode(!isDragMode)}
+                                        isManager={isManager}
+                                        isSuperAdmin={isSuperAdmin}
+                                        disabled={disabled}
+                                        hideControls={true}
+                                    />
+                                </div>
+
+                                <div className="space-y-4">
+                                    <div className="flex items-center gap-2 border-b-2 border-primary/20 pb-2 text-primary">
+                                        <Building2 className="w-5 h-5 flex-shrink-0" />
+                                        <h3 className="text-lg font-bold text-right">נתונים מהחברה</h3>
+                                    </div>
+                                    <DraggableFormContainer
+                                        fields={fields.filter(f => retentionCompanyRows.includes(f.id))}
+                                        fieldOrder={fieldOrder}
+                                        onOrderChange={handleSubOrderChange}
+                                        onReset={resetOrder}
+                                        isDragMode={isDragMode && !disabled}
+                                        onToggleDragMode={() => setIsDragMode(!isDragMode)}
+                                        isManager={isManager}
+                                        isSuperAdmin={isSuperAdmin}
+                                        disabled={disabled}
+                                        hideControls={true}
+                                    />
+                                </div>
+                            </div>
                         )}
                     </TabsContent>
                 </Tabs>
