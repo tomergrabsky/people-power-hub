@@ -17,9 +17,10 @@ const SelectTrigger = React.forwardRef<
   <SelectPrimitive.Trigger
     ref={ref}
     className={cn(
-      "flex h-10 w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 [&>span]:w-full [&>span]:text-right",
+      "flex h-10 w-full flex-row items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 [&>span]:line-clamp-1 [&>span]:w-full [&>span]:text-right",
       className,
     )}
+    dir="rtl"
     {...props}
   >
     {children}
@@ -72,6 +73,7 @@ const SelectContent = React.forwardRef<
         className,
       )}
       position={position}
+      dir="rtl"
       {...props}
     >
       <SelectScrollUpButton />
@@ -108,6 +110,7 @@ const SelectItem = React.forwardRef<
       "relative flex w-full cursor-default select-none items-center justify-start rounded-sm py-1.5 pl-8 pr-2 text-sm outline-none data-[disabled]:pointer-events-none data-[disabled]:opacity-50 focus:bg-accent focus:text-accent-foreground",
       className,
     )}
+    dir="rtl"
     {...props}
   >
     <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
@@ -117,7 +120,7 @@ const SelectItem = React.forwardRef<
     </span>
 
     <SelectPrimitive.ItemText>
-      <div className="text-right w-full" dir="rtl">{children}</div>
+      <div className="text-right w-full">{children}</div>
     </SelectPrimitive.ItemText>
   </SelectPrimitive.Item>
 ));

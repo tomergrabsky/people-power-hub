@@ -60,7 +60,7 @@ export default function PerformanceLevels() {
                 created_at: new Date().toISOString(),
                 ...doc.data()
             })) as PerformanceLevel[];
-            setLevels(fetched.sort((a, b) => a.name.localeCompare(b.name)));
+            setLevels(fetched.sort((a, b) => a.name.localeCompare(b.name, 'he', { numeric: true })));
         } catch (e) {
             console.error(e);
             toast.error('שגיאה בטעינת רמות הביצועים');

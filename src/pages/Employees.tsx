@@ -390,7 +390,7 @@ export default function Employees() {
       setBranches(mapDocs(branchesSnap));
       setSeniorityLevels(mapDocs(senioritySnap));
       setLeavingReasons(mapDocs(leavingSnap));
-      setPerformanceLevels(mapDocs(performanceSnap));
+      setPerformanceLevels(mapDocs(performanceSnap).sort((a: any, b: any) => a.name.localeCompare(b.name, 'he', { numeric: true })));
     } catch (e) {
       console.error(e);
       toast.error('שגיאה בטעינת הנתונים');
@@ -432,6 +432,13 @@ export default function Employees() {
     if (!reasonId) return '-';
     const reason = leavingReasons.find(r => r.id === reasonId);
     return reason?.name || '-';
+  };
+
+  const formatToHebrewNumber = (val: number | string | null | undefined) => {
+    if (val === null || val === undefined || val === '') return '';
+    const num = typeof val === 'string' ? parseFloat(val.replace(/,/g, '')) : val;
+    if (isNaN(num)) return '';
+    return Math.round(num).toLocaleString('he-IL');
   };
 
   const getPerformanceLevelName = (levelId: string | null | undefined) => {
@@ -1112,12 +1119,13 @@ export default function Employees() {
             <Label htmlFor="cost">עלות העובד בחודש (₪) - כולל מע"מ</Label>
             <Input
               id="cost"
-              type="number"
-              min="0"
-              step="0.01"
-              value={formData.cost}
-              onChange={(e) => setFormData({ ...formData, cost: e.target.value })}
-              dir="ltr"
+              type="text"
+              value={formData.cost ? formatToHebrewNumber(formData.cost) : ''}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^\d]/g, '');
+                setFormData({ ...formData, cost: val });
+              }}
+              className="text-right"
             />
           </div>
         </div>
@@ -1306,19 +1314,20 @@ export default function Employees() {
               type="date"
               value={formData.salary_raise_date}
               onChange={(e) => setFormData({ ...formData, salary_raise_date: e.target.value })}
-              dir="ltr"
+              className="text-right"
             />
           </div>
           <div className="space-y-2 text-right">
             <Label htmlFor="salary_raise_percentage">אחוז העלאת שכר (%)</Label>
             <Input
               id="salary_raise_percentage"
-              type="number"
-              min="0"
-              step="0.1"
-              value={formData.salary_raise_percentage}
-              onChange={(e) => setFormData({ ...formData, salary_raise_percentage: e.target.value })}
-              dir="ltr"
+              type="text"
+              value={formData.salary_raise_percentage ? formatToHebrewNumber(formData.salary_raise_percentage) : ''}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^\d]/g, '');
+                setFormData({ ...formData, salary_raise_percentage: val });
+              }}
+              className="text-right"
             />
           </div>
         </div>
@@ -1335,11 +1344,10 @@ export default function Employees() {
               id="linkedin_url"
               type="url"
               maxLength={200}
-              className="text-left"
+              className="text-right"
               placeholder="https://linkedin.com/in/..."
               value={formData.linkedin_url}
               onChange={(e) => setFormData({ ...formData, linkedin_url: e.target.value })}
-              dir="ltr"
             />
           </div>
         </div>
@@ -1394,21 +1402,21 @@ export default function Employees() {
             <Label>שכר חודשי משוער (₪)</Label>
             <Input
               className="text-right bg-muted"
-              value={formData.cost ? `₪${Math.round(parseFloat(formData.cost) / 1.4 / 1.1 / 1.18).toLocaleString()}` : '-'}
+              value={formData.cost ? `₪${formatToHebrewNumber(Math.round(parseFloat(formData.cost) / 1.4 / 1.1 / 1.18))}` : '-'}
               disabled
-              dir="ltr"
             />
           </div>
           <div className="space-y-2 text-right">
             <Label htmlFor="real_market_salary">שכר חודשי ריאלי בשוק (₪)</Label>
             <Input
               id="real_market_salary"
-              type="number"
-              min="0"
-              step="1"
-              value={formData.real_market_salary}
-              onChange={(e) => setFormData({ ...formData, real_market_salary: e.target.value })}
-              dir="ltr"
+              type="text"
+              value={formData.real_market_salary ? formatToHebrewNumber(formData.real_market_salary) : ''}
+              onChange={(e) => {
+                const val = e.target.value.replace(/[^\d]/g, '');
+                setFormData({ ...formData, real_market_salary: val });
+              }}
+              className="text-right"
             />
           </div>
         </div>
@@ -1604,9 +1612,8 @@ export default function Employees() {
             <Label>עלות העובד בחודש (₪) - כולל מע"מ</Label>
             <Input
               className="text-right bg-muted"
-              value={selectedEmployee?.cost ? `₪${selectedEmployee.cost.toLocaleString()}` : '-'}
+              value={selectedEmployee?.cost ? `₪${formatToHebrewNumber(selectedEmployee.cost)}` : '-'}
               disabled
-              dir="ltr"
             />
           </div>
         </div>
@@ -1739,16 +1746,14 @@ export default function Employees() {
               className="text-right bg-muted"
               value={selectedEmployee?.salary_raise_date ? new Date(selectedEmployee.salary_raise_date).toLocaleDateString('he-IL') : '-'}
               disabled
-              dir="ltr"
             />
           </div>
           <div className="space-y-2 text-right">
             <Label>אחוז העלאת שכר (%)</Label>
             <Input
               className="text-right bg-muted"
-              value={selectedEmployee?.salary_raise_percentage ? `${selectedEmployee.salary_raise_percentage}%` : '-'}
+              value={selectedEmployee?.salary_raise_percentage ? `${formatToHebrewNumber(selectedEmployee.salary_raise_percentage)}%` : '-'}
               disabled
-              dir="ltr"
             />
           </div>
         </div>
@@ -1766,17 +1771,15 @@ export default function Employees() {
                 href={selectedEmployee.linkedin_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="block p-2 bg-muted rounded-md text-left text-primary hover:underline"
-                dir="ltr"
+                className="block p-2 bg-muted rounded-md text-right text-primary hover:underline"
               >
                 {selectedEmployee.linkedin_url}
               </a>
             ) : (
               <Input
-                className="text-left bg-muted"
+                className="text-right bg-muted"
                 value="-"
                 disabled
-                dir="ltr"
               />
             )}
           </div>
@@ -1818,18 +1821,16 @@ export default function Employees() {
             <Label>שכר חודשי משוער (₪)</Label>
             <Input
               className="text-right bg-muted"
-              value={selectedEmployee?.cost ? `₪${Math.round(selectedEmployee.cost / 1.4 / 1.1 / 1.18).toLocaleString()}` : '-'}
+              value={selectedEmployee?.cost ? `₪${formatToHebrewNumber(selectedEmployee.cost / 1.4 / 1.1 / 1.18)}` : '-'}
               disabled
-              dir="ltr"
             />
           </div>
           <div className="space-y-2 text-right">
             <Label>שכר חודשי ריאלי בשוק (₪)</Label>
             <Input
               className="text-right bg-muted"
-              value={selectedEmployee?.real_market_salary ? `₪${selectedEmployee.real_market_salary.toLocaleString()}` : '-'}
+              value={selectedEmployee?.real_market_salary ? `₪${formatToHebrewNumber(selectedEmployee.real_market_salary)}` : '-'}
               disabled
-              dir="ltr"
             />
           </div>
         </div>
@@ -2401,7 +2402,7 @@ export default function Employees() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden">
             <DialogHeader className="text-right flex-shrink-0">
-              <DialogTitle className="text-right">עריכת עובד</DialogTitle>
+              <DialogTitle className="text-right">עריכת עובדים - {selectedEmployee?.full_name}</DialogTitle>
               <DialogDescription className="text-right">עדכן את פרטי העובד</DialogDescription>
             </DialogHeader>
             <ScrollArea className="flex-1 overflow-y-auto pr-4">
