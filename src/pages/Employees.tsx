@@ -79,6 +79,7 @@ interface Employee {
   full_name: string;
   id_number: string;
   job_role_id: string | null;
+  performance_level_id?: string | null;
   professional_experience_years: number;
   organization_experience_years: number;
   project_id: string | null;
@@ -139,6 +140,11 @@ interface LeavingReason {
   name: string;
 }
 
+interface PerformanceLevel {
+  id: string;
+  name: string;
+}
+
 export default function Employees() {
   const { isManager, isSuperAdmin } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
@@ -148,6 +154,7 @@ export default function Employees() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [seniorityLevels, setSeniorityLevels] = useState<SeniorityLevel[]>([]);
   const [leavingReasons, setLeavingReasons] = useState<LeavingReason[]>([]);
+  const [performanceLevels, setPerformanceLevels] = useState<PerformanceLevel[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProject, setFilterProject] = useState<string[]>([]);
@@ -187,6 +194,7 @@ export default function Employees() {
     salary_raise_percentage: false,
     our_sourcing: false,
     leaving_reason_id: false,
+    performance_level_id: false,
     replacement_needed: false,
     created_at: false,
     updated_at: false,
@@ -218,11 +226,12 @@ export default function Employees() {
     created_by: 'נוצר ע"י',
     our_sourcing: 'איתור שלנו?',
     leaving_reason_id: 'סיבת רצון לעזוב - קטגוריות',
+    performance_level_id: 'ביצועי העובד',
     replacement_needed: 'נדרשת החלפה?',
   };
 
   // Manager-only columns
-  const managerOnlyColumns = ['cost', 'attrition_risk', 'attrition_risk_reason', 'unit_criticality', 'salary_raise_date', 'salary_raise_percentage', 'leaving_reason_id'];
+  const managerOnlyColumns = ['cost', 'attrition_risk', 'attrition_risk_reason', 'unit_criticality', 'salary_raise_date', 'salary_raise_percentage', 'leaving_reason_id', 'performance_level_id'];
 
   const visibleColumnsCount = Object.keys(visibleColumns).filter((key) => {
     if (!visibleColumns[key]) return false;
@@ -241,7 +250,7 @@ export default function Employees() {
     'professional_experience_years', 'organization_experience_years', 'city',
     'start_date', 'cost', 'attrition_risk', 'attrition_risk_reason',
     'unit_criticality', 'salary_raise_date', 'salary_raise_percentage',
-    'created_at', 'updated_at', 'created_by', 'our_sourcing', 'leaving_reason_id', 'replacement_needed'
+    'created_at', 'updated_at', 'created_by', 'our_sourcing', 'leaving_reason_id', 'performance_level_id', 'replacement_needed'
   ], []);
 
   const { columnOrder, updateOrder: updateColumnOrder, resetOrder: resetColumnOrder } = useColumnOrder('employees', defaultColumnOrder);
@@ -294,6 +303,7 @@ export default function Employees() {
     'row_fullname_jobrole',
     'row_project_branch',
     'row_company_experience',
+    'row_performance_level',
     'row_city_startdate',
     'row_birthdate_phone',
     'row_emergency_phone',
@@ -303,8 +313,8 @@ export default function Employees() {
     'row_unit_criticality',
     'row_risk_reason_unit',
     'row_attrition_reason',
-    'row_replacement_needed',
     'row_retention_plan',
+    'row_replacement_needed',
     'row_attrition_risk_company',
     'row_company_retention_plan',
     'row_cost',
@@ -342,6 +352,7 @@ export default function Employees() {
     retention_plan: '',
     company_retention_plan: '',
     company_attrition_risk: '',
+    performance_level_id: '',
     replacement_needed: '',
   });
 
@@ -354,7 +365,7 @@ export default function Employees() {
     try {
       const [
         employeesSnap, rolesSnap, projectsSnap,
-        companiesSnap, branchesSnap, senioritySnap, leavingSnap
+        companiesSnap, branchesSnap, senioritySnap, leavingSnap, performanceSnap
       ] = await Promise.all([
         getDocs(collection(db, 'employees')),
         getDocs(collection(db, 'job_roles')),
@@ -362,7 +373,8 @@ export default function Employees() {
         getDocs(collection(db, 'employing_companies')),
         getDocs(collection(db, 'branches')),
         getDocs(collection(db, 'seniority_levels')),
-        getDocs(collection(db, 'leaving_reasons'))
+        getDocs(collection(db, 'leaving_reasons')),
+        getDocs(collection(db, 'performance_levels'))
       ]);
 
       const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
@@ -374,6 +386,7 @@ export default function Employees() {
       setBranches(mapDocs(branchesSnap));
       setSeniorityLevels(mapDocs(senioritySnap));
       setLeavingReasons(mapDocs(leavingSnap));
+      setPerformanceLevels(mapDocs(performanceSnap));
     } catch (e) {
       console.error(e);
       toast.error('שגיאה בטעינת הנתונים');
@@ -415,6 +428,12 @@ export default function Employees() {
     if (!reasonId) return '-';
     const reason = leavingReasons.find(r => r.id === reasonId);
     return reason?.name || '-';
+  };
+
+  const getPerformanceLevelName = (levelId: string | null | undefined) => {
+    if (!levelId) return '-';
+    const level = performanceLevels.find(l => l.id === levelId);
+    return level?.name || '-';
   };
 
   // Calculate organization experience years dynamically from start_date
@@ -547,6 +566,7 @@ export default function Employees() {
       retention_plan: '',
       company_retention_plan: '',
       company_attrition_risk: '',
+      performance_level_id: '',
       replacement_needed: '',
     });
     setActiveTab('general');
@@ -580,6 +600,7 @@ export default function Employees() {
       revolving_door: formData.revolving_door === 'true' ? true : formData.revolving_door === 'false' ? false : null,
       our_sourcing: formData.our_sourcing === 'true' ? true : formData.our_sourcing === 'false' ? false : null,
       leaving_reason_id: formData.leaving_reason_id || null,
+      performance_level_id: formData.performance_level_id || null,
     };
 
     // Manager-only fields
@@ -633,6 +654,7 @@ export default function Employees() {
       revolving_door: formData.revolving_door === 'true' ? true : formData.revolving_door === 'false' ? false : null,
       our_sourcing: formData.our_sourcing === 'true' ? true : formData.our_sourcing === 'false' ? false : null,
       leaving_reason_id: formData.leaving_reason_id || null,
+      performance_level_id: formData.performance_level_id || null,
     };
 
     if (isManager) {
@@ -708,6 +730,7 @@ export default function Employees() {
       retention_plan: employee.retention_plan || '',
       company_retention_plan: (employee as any).company_retention_plan || '',
       company_attrition_risk: employee.company_attrition_risk?.toString() || '',
+      performance_level_id: employee.performance_level_id || '',
       replacement_needed: (employee as any).replacement_needed || '',
     });
     setIsEditDialogOpen(true);
@@ -1012,6 +1035,29 @@ export default function Employees() {
       ),
     },
     {
+      id: 'row_performance_level',
+      label: 'ביצועי העובד',
+      isManagerOnly: true,
+      component: (
+        <div className="space-y-2 text-right">
+          <Label htmlFor="performance_level_id">ביצועי העובד</Label>
+          <Select
+            value={formData.performance_level_id || ''}
+            onValueChange={(value) => setFormData({ ...formData, performance_level_id: value })}
+          >
+            <SelectTrigger className="text-right" dir="rtl">
+              <SelectValue placeholder="בחר רמת ביצועים" />
+            </SelectTrigger>
+            <SelectContent>
+              {performanceLevels.map((level) => (
+                <SelectItem key={level.id} value={level.id} className="text-right">{level.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      ),
+    },
+    {
       id: 'row_seniority',
       label: 'סניוריטי',
       component: (
@@ -1091,7 +1137,7 @@ export default function Employees() {
             value={formData.company_attrition_risk}
             onValueChange={(value) => setFormData({ ...formData, company_attrition_risk: value })}
           >
-            <SelectTrigger className="text-right">
+            <SelectTrigger className="text-right" dir="rtl">
               <SelectValue placeholder="בחר רמת סיכוי" />
             </SelectTrigger>
             <SelectContent dir="rtl">
@@ -1118,7 +1164,7 @@ export default function Employees() {
               value={formData.attrition_risk}
               onValueChange={(value) => setFormData({ ...formData, attrition_risk: value })}
             >
-              <SelectTrigger className="text-right">
+              <SelectTrigger className="text-right" dir="rtl">
                 <SelectValue placeholder="בחר רמת סיכוי" />
               </SelectTrigger>
               <SelectContent dir="rtl">
@@ -1137,7 +1183,7 @@ export default function Employees() {
               value={formData.leaving_reason_id}
               onValueChange={(value) => setFormData({ ...formData, leaving_reason_id: value })}
             >
-              <SelectTrigger className="text-right">
+              <SelectTrigger className="text-right" dir="rtl">
                 <SelectValue placeholder="בחר סיבה" />
               </SelectTrigger>
               <SelectContent>
@@ -1195,7 +1241,7 @@ export default function Employees() {
             value={formData.replacement_needed}
             onValueChange={(value) => setFormData({ ...formData, replacement_needed: value })}
           >
-            <SelectTrigger className="text-right">
+            <SelectTrigger className="text-right" dir="rtl">
               <SelectValue placeholder="בחר אפשרות" />
             </SelectTrigger>
             <SelectContent dir="rtl">
@@ -1209,17 +1255,17 @@ export default function Employees() {
     },
     {
       id: 'row_company_retention_plan',
-      label: 'תכנית שימור - לדעת החברה',
+      label: 'התיחסות חברה למעבר דרומה',
       isManagerOnly: true,
       component: (
         <div className="space-y-2 text-right">
-          <Label htmlFor="company_retention_plan">תכנית שימור - לדעת החברה</Label>
+          <Label htmlFor="company_retention_plan">התיחסות חברה למעבר דרומה</Label>
           <Input
             id="company_retention_plan"
             className="text-right"
             value={formData.company_retention_plan}
             onChange={(e) => setFormData({ ...formData, company_retention_plan: e.target.value })}
-            placeholder="הזן תכנית שימור..."
+            placeholder="הזן התיחסות..."
           />
         </div>
       ),
@@ -1345,7 +1391,7 @@ export default function Employees() {
         </div>
       ),
     },
-  ], [formData, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons]);
+  ], [formData, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, performanceLevels]);
 
   // View-only form fields (same layout as edit, but displays values without editing)
   const viewFormFields = useMemo(() => [
@@ -1487,6 +1533,21 @@ export default function Employees() {
       ),
     },
     {
+      id: 'row_performance_level',
+      label: 'ביצועי העובד',
+      isManagerOnly: true,
+      component: (
+        <div className="space-y-2 text-right">
+          <Label>ביצועי העובד</Label>
+          <Input
+            className="text-right bg-muted"
+            value={getPerformanceLevelName(selectedEmployee?.performance_level_id)}
+            disabled
+          />
+        </div>
+      ),
+    },
+    {
       id: 'row_seniority',
       label: 'סניוריטי',
       component: (
@@ -1620,11 +1681,11 @@ export default function Employees() {
     },
     {
       id: 'row_company_retention_plan',
-      label: 'תכנית שימור - לדעת החברה',
+      label: 'התיחסות חברה למעבר דרומה',
       isManagerOnly: true,
       component: (
         <div className="space-y-2 text-right">
-          <Label>תכנית שימור - לדעת החברה</Label>
+          <Label>התיחסות חברה למעבר דרומה</Label>
           <Input
             className="text-right bg-muted"
             value={(selectedEmployee as any)?.company_retention_plan || '-'}
@@ -1741,7 +1802,7 @@ export default function Employees() {
         </div>
       ),
     },
-  ], [selectedEmployee, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, isManager]);
+  ], [selectedEmployee, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, performanceLevels, isManager]);
 
   const renderFormFields = (disabled = false) => {
     const fields = disabled ? viewFormFields : formFields;
@@ -1756,6 +1817,7 @@ export default function Employees() {
     ];
 
     const performanceRows = [
+      'row_performance_level',
       'row_seniority',
       'row_linkedin',
       'row_revolving_door',
@@ -1768,8 +1830,8 @@ export default function Employees() {
       'row_unit_criticality',
       'row_risk_reason_unit',
       'row_attrition_reason',
-      'row_replacement_needed',
-      'row_retention_plan'
+      'row_retention_plan',
+      'row_replacement_needed'
     ];
 
     const retentionCompanyRows = [

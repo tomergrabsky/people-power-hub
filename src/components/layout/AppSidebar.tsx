@@ -42,6 +42,7 @@ const adminNavItems = [
   { title: 'ניהול תפקידים', url: '/admin/roles', icon: Briefcase },
   { title: 'ניהול ענפים', url: '/admin/branches', icon: GitBranch },
   { title: 'רמות ותק', url: '/admin/seniority-levels', icon: Briefcase },
+  { title: 'ניהול ביצועים', url: '/admin/performance-levels', icon: BarChart3 },
   { title: 'חברות מעסיקות', url: '/admin/companies', icon: Building2 },
   { title: 'סיבות רצון לעזוב', url: '/admin/leaving-reasons', icon: DoorOpen },
   { title: 'ניהול משתמשים', url: '/admin/users', icon: UserCog },

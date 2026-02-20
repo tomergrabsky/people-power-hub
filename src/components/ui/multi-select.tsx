@@ -57,12 +57,13 @@ export function MultiSelect({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "w-full justify-between text-right font-normal h-10",
+            "w-full justify-between text-right font-normal h-10 flex-row",
             !selected.length && "text-muted-foreground",
             className
           )}
+          dir="rtl"
         >
-          <div className="flex items-center gap-1 flex-1 overflow-hidden text-right">
+          <div className="flex items-center gap-1 flex-1 overflow-hidden justify-start text-right">
             {selected.length === 0 ? (
               <span>{placeholder}</span>
             ) : selected.length <= 2 ? (
@@ -73,33 +74,34 @@ export function MultiSelect({
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-1 flex-shrink-0 mr-2">
+          <div className="flex items-center gap-1 flex-shrink-0 mr-2 border-r pr-2 h-full">
+            <ChevronDown className="h-4 w-4 opacity-50" />
             {selected.length > 0 && (
               <X
                 className="h-4 w-4 opacity-50 hover:opacity-100 cursor-pointer"
                 onClick={handleClear}
               />
             )}
-            <ChevronDown className="h-4 w-4 opacity-50" />
           </div>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full min-w-[200px] p-0 z-50 bg-popover" align="start">
+      <PopoverContent className="w-full min-w-[200px] p-0 z-50 bg-popover" align="start" dir="rtl">
         <ScrollArea className="h-[200px]">
           <div className="p-1">
             {options.map((option) => (
               <div
                 key={option.value}
                 className={cn(
-                  "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors text-right",
+                  "relative flex cursor-pointer select-none items-center rounded-sm py-1.5 px-2 text-sm outline-none transition-colors justify-between",
                   "hover:bg-accent hover:text-accent-foreground",
                   selected.includes(option.value) && "bg-accent/50"
                 )}
                 onClick={() => handleToggle(option.value)}
               >
+                <span className="flex-1 text-right">{option.label}</span>
                 <div
                   className={cn(
-                    "ml-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+                    "mr-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary flex-shrink-0",
                     selected.includes(option.value)
                       ? "bg-primary text-primary-foreground"
                       : "opacity-50"
@@ -109,7 +111,6 @@ export function MultiSelect({
                     <Check className="h-3 w-3" />
                   )}
                 </div>
-                <span className="flex-1 text-right">{option.label}</span>
               </div>
             ))}
           </div>
