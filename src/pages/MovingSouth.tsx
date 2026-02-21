@@ -153,7 +153,6 @@ export default function MovingSouth() {
 
     const { isSuperAdmin } = useAuth();
 
-    // Default field order for the form
     const defaultFieldOrder = useMemo(() => [
         'row_fullname_jobrole',
         'row_project_branch',
@@ -168,6 +167,7 @@ export default function MovingSouth() {
         'row_risk_reason_unit',
         'row_attrition_reason',
         'row_retention_plan',
+        'row_commander_summary',
         'row_replacement_needed',
         'row_attrition_risk_company',
         'row_company_retention_plan',
@@ -204,6 +204,7 @@ export default function MovingSouth() {
         our_sourcing: '',
         leaving_reason_id: '',
         retention_plan: '',
+        commander_summary_and_status: '',
         company_retention_plan: '',
         company_attrition_risk: '',
         performance_level_id: '',
@@ -212,6 +213,7 @@ export default function MovingSouth() {
 
 
     const movingSouthColumnsConfig = [
+        { id: 'commander_summary_and_status', label: 'סיכום מפקד יחידה וסטטוס', sortable: true },
         { id: 'attentionScore', label: 'קריטיות X סיכוי לעזיבה', sortable: true },
         { id: 'unit_criticality', label: 'מידת קריטיות ליחידה', sortable: true },
         { id: 'attrition_risk', label: 'מידת סיכוי לעזיבה', sortable: true },
@@ -870,6 +872,23 @@ export default function MovingSouth() {
             ),
         },
         {
+            id: 'row_commander_summary',
+            label: 'סיכום מפקד יחידה וסטטוס',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="commander_summary_and_status">סיכום מפקד יחידה וסטטוס</Label>
+                    <Input
+                        id="commander_summary_and_status"
+                        className="text-right"
+                        value={formData.commander_summary_and_status || ''}
+                        onChange={(e) => setFormData({ ...formData, commander_summary_and_status: e.target.value })}
+                        placeholder="הזן סיכום מפקד..."
+                    />
+                </div>
+            ),
+        },
+        {
             id: 'row_replacement_needed',
             label: 'לגייס במקומו?',
             isManagerOnly: true,
@@ -1312,6 +1331,21 @@ export default function MovingSouth() {
             ),
         },
         {
+            id: 'row_commander_summary',
+            label: 'סיכום מפקד יחידה וסטטוס',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>סיכום מפקד יחידה וסטטוס</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={(selectedEmployee as any)?.commander_summary_and_status || '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
             id: 'row_replacement_needed',
             label: 'לגייס במקומו?',
             isManagerOnly: true,
@@ -1472,6 +1506,7 @@ export default function MovingSouth() {
             'row_risk_reason_unit',
             'row_attrition_reason',
             'row_retention_plan',
+            'row_commander_summary',
             'row_replacement_needed'
         ];
 

@@ -316,6 +316,7 @@ export default function Employees() {
     'row_risk_reason_unit',
     'row_attrition_reason',
     'row_retention_plan',
+    'row_commander_summary',
     'row_replacement_needed',
     'row_attrition_risk_company',
     'row_company_retention_plan',
@@ -353,6 +354,7 @@ export default function Employees() {
     our_sourcing: '',
     leaving_reason_id: '',
     retention_plan: '',
+    commander_summary_and_status: '',
     company_retention_plan: '',
     company_attrition_risk: '',
     performance_level_id: '',
@@ -575,6 +577,7 @@ export default function Employees() {
       our_sourcing: '',
       leaving_reason_id: '',
       retention_plan: '',
+      commander_summary_and_status: '',
       company_retention_plan: '',
       company_attrition_risk: '',
       performance_level_id: '',
@@ -742,6 +745,7 @@ export default function Employees() {
       our_sourcing: employee.our_sourcing === true ? 'true' : employee.our_sourcing === false ? 'false' : '',
       leaving_reason_id: employee.leaving_reason_id || '',
       retention_plan: employee.retention_plan || '',
+      commander_summary_and_status: (employee as any).commander_summary_and_status || '',
       company_retention_plan: (employee as any).company_retention_plan || '',
       company_attrition_risk: employee.company_attrition_risk?.toString() || '',
       performance_level_id: employee.performance_level_id || '',
@@ -1262,6 +1266,23 @@ export default function Employees() {
       ),
     },
     {
+      id: 'row_commander_summary',
+      label: 'סיכום מפקד יחידה וסטטוס',
+      isManagerOnly: true,
+      component: (
+        <div className="space-y-2 text-right">
+          <Label htmlFor="commander_summary_and_status">סיכום מפקד יחידה וסטטוס</Label>
+          <Input
+            id="commander_summary_and_status"
+            className="text-right"
+            value={formData.commander_summary_and_status || ''}
+            onChange={(e) => setFormData({ ...formData, commander_summary_and_status: e.target.value })}
+            placeholder="הזן סיכום מפקד..."
+          />
+        </div>
+      ),
+    },
+    {
       id: 'row_replacement_needed',
       label: 'לגייס במקומו?',
       isManagerOnly: true,
@@ -1705,6 +1726,21 @@ export default function Employees() {
       ),
     },
     {
+      id: 'row_commander_summary',
+      label: 'סיכום מפקד יחידה וסטטוס',
+      isManagerOnly: true,
+      component: (
+        <div className="space-y-2 text-right">
+          <Label>סיכום מפקד יחידה וסטטוס</Label>
+          <Input
+            className="text-right bg-muted"
+            value={(selectedEmployee as any)?.commander_summary_and_status || '-'}
+            disabled
+          />
+        </div>
+      ),
+    },
+    {
       id: 'row_replacement_needed',
       label: 'לגייס במקומו?',
       isManagerOnly: true,
@@ -1865,6 +1901,7 @@ export default function Employees() {
       'row_risk_reason_unit',
       'row_attrition_reason',
       'row_retention_plan',
+      'row_commander_summary',
       'row_replacement_needed'
     ];
 
