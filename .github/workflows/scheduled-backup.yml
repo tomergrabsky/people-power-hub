@@ -2,8 +2,8 @@ name: Scheduled Database Backup
 
 on:
   schedule:
-    # ירוץ בכל יום ראשון בחצות
-    - cron: '0 0 * * 0'
+    # ירוץ בכל יום בחצות
+    - cron: '0 0 * * *'
   workflow_dispatch:
     # מאפשר להריץ את הגיבוי ידנית בלחיצת כפתור מתוך GitHub
 
