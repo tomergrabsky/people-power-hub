@@ -148,13 +148,12 @@ const LeftEmployees = () => {
                     <Table>
                         <TableHeader>
                             <TableRow>
-                                <TableHead className="text-right font-bold text-foreground">שם העובד</TableHead>
+                                <TableHead className="text-right">שם העובד</TableHead>
                                 <TableHead className="text-right">תאריך עזיבה</TableHead>
                                 <TableHead className="text-right">סיבת עזיבה</TableHead>
                                 <TableHead className="text-right">הערות</TableHead>
                                 <TableHead className="text-right">תפקיד</TableHead>
                                 <TableHead className="text-right">תאריך התחלה</TableHead>
-                                <TableHead className="text-right">תאריך עזיבה</TableHead>
                                 <TableHead className="text-right">משך הזמן שעבד</TableHead>
                                 <TableHead className="text-right">פעולות</TableHead>
                             </TableRow>
@@ -162,27 +161,26 @@ const LeftEmployees = () => {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                                         <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
                                         טוען נתונים...
                                     </TableCell>
                                 </TableRow>
                             ) : filteredEmployees.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                                         לא נמצאו עובדים שעזבו שעונים על תנאי החיפוש.
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 filteredEmployees.map((employee) => (
                                     <TableRow key={employee.id}>
-                                        <TableCell className="font-bold text-foreground text-right">{employee.full_name}</TableCell>
-                                        <TableCell className="text-right font-semibold text-destructive">{employee.left_date ? new Date(employee.left_date).toLocaleDateString('he-IL') : '-'}</TableCell>
+                                        <TableCell className="text-right">{employee.full_name}</TableCell>
+                                        <TableCell className="text-right">{employee.left_date ? new Date(employee.left_date).toLocaleDateString('he-IL') : '-'}</TableCell>
                                         <TableCell className="max-w-[200px] truncate text-right">{employee.left_reason || '-'}</TableCell>
                                         <TableCell className="max-w-[200px] truncate text-right" title={employee.left_notes || ''}>{employee.left_notes || '-'}</TableCell>
                                         <TableCell className="text-right">{getRoleName(employee.job_role_id)}</TableCell>
                                         <TableCell className="text-right">{employee.start_date ? new Date(employee.start_date).toLocaleDateString('he-IL') : '-'}</TableCell>
-                                        <TableCell className="text-right font-semibold text-destructive">{employee.left_date ? new Date(employee.left_date).toLocaleDateString('he-IL') : '-'}</TableCell>
                                         <TableCell className="text-right">{calculateTenure(employee.start_date, employee.left_date)}</TableCell>
                                         <TableCell>
                                             <div className="flex gap-1 justify-end">
