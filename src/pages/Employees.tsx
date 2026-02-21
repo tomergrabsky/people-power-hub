@@ -109,6 +109,10 @@ interface Employee {
   retention_plan?: string | null;
   company_retention_plan?: string | null;
   company_attrition_risk?: number | null;
+  is_left?: boolean;
+  left_date?: string;
+  left_reason?: string;
+  left_notes?: string;
 }
 
 interface JobRole {
@@ -374,7 +378,7 @@ export default function Employees() {
   const openLeaveDialog = (employee: Employee) => {
     setSelectedLeaveEmployee(employee);
     setLeaveDate(new Date().toISOString().split('T')[0]);
-    setLeaveReason(employee.leaving_reason_id || '');
+    setLeaveReason(employee.left_reason || '');
     setLeaveNotes('');
     setIsLeaveDialogOpen(true);
   };
@@ -389,7 +393,7 @@ export default function Employees() {
       await updateDoc(doc(db, 'employees', selectedLeaveEmployee.id), {
         is_left: true,
         left_date: leaveDate,
-        left_reason_id: leaveReason,
+        left_reason: leaveReason,
         left_notes: leaveNotes
       });
       toast.success('העובד סומן כעזב בהצלחה');
@@ -2572,18 +2576,13 @@ export default function Employees() {
               </div>
               <div className="space-y-2 text-right">
                 <Label htmlFor="leave_reason">סיבת עזיבה *</Label>
-                <Select value={leaveReason} onValueChange={setLeaveReason}>
-                  <SelectTrigger className="text-right" dir="rtl">
-                    <SelectValue placeholder="בחר סיבת עזיבה..." />
-                  </SelectTrigger>
-                  <SelectContent position="popper" side="bottom" align="end" className="w-[var(--radix-select-trigger-width)] min-w-[200px] z-50">
-                    {leavingReasons.map((reason) => (
-                      <SelectItem key={reason.id} value={reason.id} className="text-right">
-                        {reason.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input
+                  id="leave_reason"
+                  className="text-right"
+                  placeholder="הזן סיבת עזיבה (טקסט חופשי)..."
+                  value={leaveReason}
+                  onChange={(e) => setLeaveReason(e.target.value)}
+                />
               </div>
               <div className="space-y-2 text-right">
                 <Label htmlFor="leave_notes">הערות (אופציונלי)</Label>

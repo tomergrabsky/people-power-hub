@@ -32,7 +32,7 @@ interface Employee {
     start_date: string;
     is_left?: boolean;
     left_date?: string;
-    left_reason_id?: string;
+    left_reason?: string;
     left_notes?: string;
 }
 
@@ -76,11 +76,6 @@ const LeftEmployees = () => {
     const getRoleName = (id: string | null) => {
         if (!id) return '-';
         return jobRoles.find(r => r.id === id)?.name || id;
-    };
-
-    const getReasonName = (id: string | null | undefined) => {
-        if (!id) return '-';
-        return leavingReasons.find(r => r.id === id)?.name || id;
     };
 
     const calculateTenure = (startDateStr: string, endDateStr?: string) => {
@@ -181,14 +176,14 @@ const LeftEmployees = () => {
                             ) : (
                                 filteredEmployees.map((employee) => (
                                     <TableRow key={employee.id}>
-                                        <TableCell className="font-bold text-foreground">{employee.full_name}</TableCell>
-                                        <TableCell dir="ltr" className="text-left font-semibold text-destructive">{employee.left_date ? new Date(employee.left_date).toLocaleDateString('he-IL') : '-'}</TableCell>
-                                        <TableCell className="max-w-[200px] truncate">{getReasonName(employee.left_reason_id)}</TableCell>
-                                        <TableCell className="max-w-[200px] truncate" title={employee.left_notes || ''}>{employee.left_notes || '-'}</TableCell>
-                                        <TableCell>{getRoleName(employee.job_role_id)}</TableCell>
-                                        <TableCell dir="ltr" className="text-left">{employee.start_date ? new Date(employee.start_date).toLocaleDateString('he-IL') : '-'}</TableCell>
-                                        <TableCell dir="ltr" className="text-left font-semibold text-destructive">{employee.left_date ? new Date(employee.left_date).toLocaleDateString('he-IL') : '-'}</TableCell>
-                                        <TableCell>{calculateTenure(employee.start_date, employee.left_date)}</TableCell>
+                                        <TableCell className="font-bold text-foreground text-right">{employee.full_name}</TableCell>
+                                        <TableCell className="text-right font-semibold text-destructive">{employee.left_date ? new Date(employee.left_date).toLocaleDateString('he-IL') : '-'}</TableCell>
+                                        <TableCell className="max-w-[200px] truncate text-right">{employee.left_reason || '-'}</TableCell>
+                                        <TableCell className="max-w-[200px] truncate text-right" title={employee.left_notes || ''}>{employee.left_notes || '-'}</TableCell>
+                                        <TableCell className="text-right">{getRoleName(employee.job_role_id)}</TableCell>
+                                        <TableCell className="text-right">{employee.start_date ? new Date(employee.start_date).toLocaleDateString('he-IL') : '-'}</TableCell>
+                                        <TableCell className="text-right font-semibold text-destructive">{employee.left_date ? new Date(employee.left_date).toLocaleDateString('he-IL') : '-'}</TableCell>
+                                        <TableCell className="text-right">{calculateTenure(employee.start_date, employee.left_date)}</TableCell>
                                         <TableCell>
                                             <div className="flex gap-1 justify-end">
                                                 <Button
@@ -235,16 +230,16 @@ const LeftEmployees = () => {
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2 text-right">
                                         <Label>תאריך התחלה</Label>
-                                        <Input className="text-right bg-muted" dir="ltr" value={selectedEmployee.start_date ? new Date(selectedEmployee.start_date).toLocaleDateString('he-IL') : '-'} disabled />
+                                        <Input className="text-right bg-muted" value={selectedEmployee.start_date ? new Date(selectedEmployee.start_date).toLocaleDateString('he-IL') : '-'} disabled />
                                     </div>
                                     <div className="space-y-2 text-right">
                                         <Label>תאריך עזיבה</Label>
-                                        <Input className="text-right bg-muted border-destructive/50" dir="ltr" value={selectedEmployee.left_date ? new Date(selectedEmployee.left_date).toLocaleDateString('he-IL') : '-'} disabled />
+                                        <Input className="text-right bg-muted border-destructive/50" value={selectedEmployee.left_date ? new Date(selectedEmployee.left_date).toLocaleDateString('he-IL') : '-'} disabled />
                                     </div>
                                 </div>
                                 <div className="space-y-2 text-right">
                                     <Label>סיבת עזיבה במערכת</Label>
-                                    <Input className="text-right bg-muted text-destructive font-medium" value={getReasonName(selectedEmployee.left_reason_id)} disabled />
+                                    <Input className="text-right bg-muted text-destructive font-medium" value={selectedEmployee.left_reason || '-'} disabled />
                                 </div>
                                 {selectedEmployee.left_notes && (
                                     <div className="space-y-2 text-right">
