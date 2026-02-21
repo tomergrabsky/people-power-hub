@@ -30,6 +30,6 @@ jobs:
       - name: Upload Backup Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: database-backup-${{ github.event.repository.name }}
+          name: full-db-backup-json
           path: backups/*.json
           retention-days: 90
