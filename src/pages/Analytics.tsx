@@ -245,7 +245,7 @@ export default function Analytics() {
 
     const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-    setAllEmployees(mapDocs(employeesRes));
+    setAllEmployees(mapDocs(employeesRes).filter((emp: any) => !emp.is_left));
     setProjects(mapDocs(projectsRes));
     setRoles(mapDocs(rolesRes));
     setCompanies(mapDocs(companiesRes));

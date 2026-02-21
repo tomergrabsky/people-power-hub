@@ -28,7 +28,8 @@ import {
   GitBranch,
   DoorOpen,
   Bot,
-  MapPin
+  MapPin,
+  UserMinus
 } from 'lucide-react';
 
 const mainNavItems = [
@@ -36,6 +37,7 @@ const mainNavItems = [
   { title: 'עובדים', url: '/employees', icon: Users },
   { title: 'דשבורדים ויזואליים', url: '/analytics', icon: BarChart3 },
   { title: 'מעבר דרומה', url: '/moving-south', icon: MapPin },
+  { title: 'עובדים שעזבו', url: '/left-employees', icon: UserMinus },
   { title: 'עוזר AI', url: '/ai-assistant', icon: Bot },
 ];
 

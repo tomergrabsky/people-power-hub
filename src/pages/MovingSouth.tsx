@@ -85,6 +85,9 @@ const formatToHebrewNumber = (val: number | string | null | undefined) => {
 };
 
 interface Employee {
+    is_left?: boolean;
+    left_date?: string;
+    left_reason?: string;
     id: string;
     full_name: string;
     job_role_id: string | null;
@@ -262,7 +265,7 @@ export default function MovingSouth() {
 
             const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-            setAllEmployees(mapDocs(employeesRes));
+            setAllEmployees(mapDocs(employeesRes).filter((emp: any) => !emp.is_left));
             setProjects(mapDocs(projectsRes));
             setJobRoles(mapDocs(rolesRes));
             setEmployingCompanies(mapDocs(companiesRes));

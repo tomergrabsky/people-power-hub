@@ -10,6 +10,7 @@ import MovingSouth from "./pages/MovingSouth";
 import AiAssistant from "./pages/AiAssistant";
 import Auth from "./pages/Auth";
 import Employees from "./pages/Employees";
+import LeftEmployees from "./pages/LeftEmployees";
 import AdminProjects from "./pages/admin/Projects";
 import AdminRoles from "./pages/admin/Roles";
 import AdminUsers from "./pages/admin/Users";
@@ -36,6 +37,7 @@ const App = () => (
             <Route path="/ai-assistant" element={<AiAssistant />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/employees" element={<Employees />} />
+            <Route path="/left-employees" element={<LeftEmployees />} />
             <Route path="/admin/projects" element={<AdminProjects />} />
             <Route path="/admin/roles" element={<AdminRoles />} />
             <Route path="/admin/branches" element={<AdminBranches />} />

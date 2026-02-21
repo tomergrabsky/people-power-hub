@@ -121,22 +121,24 @@ export default function AiAssistant() {
                 const getLabel = (arr: Record<string, unknown>[], id: string) => arr.find(item => item.id === id)?.name as string || "לא מוגדר";
 
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                const employees = mapDocs(employeesRes).map((emp: any) => ({
-                    name: emp.full_name,
-                    role: getLabel(jobRoles, emp.job_role_id),
-                    project: getLabel(projects, emp.project_id),
-                    branch: getLabel(branches, emp.branch_id),
-                    company: getLabel(employingCompanies, emp.employing_company_id),
-                    seniority: getLabel(seniorityLevels, emp.seniority_level_id),
-                    performance: getLabel(performanceLevels, emp.performance_level_id),
-                    leavingReason: getLabel(leavingReasons, emp.leaving_reason_id),
-                    city: emp.city || "לא מוגדר",
-                    attritionRisk: emp.attrition_risk || 0,
-                    criticality: emp.unit_criticality || 0,
-                    cost: emp.cost || 0,
-                    startDate: emp.start_date,
-                    experienceYears: emp.professional_experience_years || 0
-                }));
+                const employees = mapDocs(employeesRes)
+                    .filter((emp: any) => !emp.is_left)
+                    .map((emp: any) => ({
+                        name: emp.full_name,
+                        role: getLabel(jobRoles, emp.job_role_id),
+                        project: getLabel(projects, emp.project_id),
+                        branch: getLabel(branches, emp.branch_id),
+                        company: getLabel(employingCompanies, emp.employing_company_id),
+                        seniority: getLabel(seniorityLevels, emp.seniority_level_id),
+                        performance: getLabel(performanceLevels, emp.performance_level_id),
+                        leavingReason: getLabel(leavingReasons, emp.leaving_reason_id),
+                        city: emp.city || "לא מוגדר",
+                        attritionRisk: emp.attrition_risk || 0,
+                        criticality: emp.unit_criticality || 0,
+                        cost: emp.cost || 0,
+                        startDate: emp.start_date,
+                        experienceYears: emp.professional_experience_years || 0
+                    }));
 
                 setDbData(JSON.stringify(employees));
             } catch (err) {

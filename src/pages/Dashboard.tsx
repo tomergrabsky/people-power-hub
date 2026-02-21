@@ -23,6 +23,9 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 
 interface Employee {
+  is_left?: boolean;
+  left_date?: string;
+  left_reason?: string;
   id: string;
   full_name: string;
   birth_date: string | null;
@@ -61,10 +64,10 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const snap = await getDocs(collection(db, 'employees'));
-      const fetchedEmployees = snap.docs.map(doc => ({
+      const fetchedEmployees = (snap.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })) as Employee[];
+      })) as Employee[]).filter(emp => !emp.is_left);
 
       setEmployees(fetchedEmployees);
 

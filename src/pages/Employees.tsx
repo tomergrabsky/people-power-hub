@@ -47,7 +47,7 @@ import {
   TabsTrigger,
 } from '@/components/ui/tabs';
 import { Label } from '@/components/ui/label';
-import { Search, Plus, Pencil, Trash2, Filter, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Eye, Download, GripVertical, RotateCcw, Move, Users, Building2 } from 'lucide-react';
+import { Search, Plus, Pencil, Trash2, Filter, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Eye, Download, GripVertical, RotateCcw, Move, Users, Building2, UserMinus } from 'lucide-react';
 import { toast } from 'sonner';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useFormFieldOrder } from '@/hooks/useFormFieldOrder';
@@ -362,6 +362,40 @@ export default function Employees() {
     replacement_needed: '',
   });
 
+  const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
+  const [selectedLeaveEmployee, setSelectedLeaveEmployee] = useState<Employee | null>(null);
+  const [leaveDate, setLeaveDate] = useState('');
+  const [leaveReason, setLeaveReason] = useState('');
+
+  const openLeaveDialog = (employee: Employee) => {
+    setSelectedLeaveEmployee(employee);
+    setLeaveDate(new Date().toISOString().split('T')[0]);
+    setLeaveReason('');
+    setIsLeaveDialogOpen(true);
+  };
+
+  const handleLeaveConfirm = async () => {
+    if (!selectedLeaveEmployee || !leaveDate) {
+      toast.error('יש להזין תאריך עזיבה');
+      return;
+    }
+    setFormLoading(true);
+    try {
+      await updateDoc(doc(db, 'employees', selectedLeaveEmployee.id), {
+        is_left: true,
+        left_date: leaveDate,
+        left_reason: leaveReason
+      });
+      toast.success('העובד סומן כעזב בהצלחה');
+      setIsLeaveDialogOpen(false);
+      fetchData();
+    } catch (e) {
+      toast.error('שגיאה בעדכון סטאטוס עובד');
+    } finally {
+      setFormLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -385,7 +419,7 @@ export default function Employees() {
 
       const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-      setEmployees(mapDocs(employeesSnap));
+      setEmployees(mapDocs(employeesSnap).filter((emp: any) => !emp.is_left));
       setJobRoles(mapDocs(rolesSnap));
       setProjects(mapDocs(projectsSnap));
       setEmployingCompanies(mapDocs(companiesSnap));
@@ -2382,6 +2416,14 @@ export default function Employees() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
+                                  onClick={() => openLeaveDialog(employee)}
+                                  title="סמן כעזב"
+                                >
+                                  <UserMinus className="w-4 h-4 text-orange-500" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
                                   onClick={() => openEditDialog(employee)}
                                   title="עריכה"
                                 >
@@ -2483,6 +2525,51 @@ export default function Employees() {
                 </DialogFooter>
               </>
             )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Leave Confirmation Dialog */}
+        <Dialog open={isLeaveDialogOpen} onOpenChange={setIsLeaveDialogOpen}>
+          <DialogContent className="sm:max-w-md text-right flex flex-col items-end">
+            <DialogHeader className="w-full">
+              <DialogTitle className="text-right">סימון עובד שעזב</DialogTitle>
+              <DialogDescription className="text-right">
+                האם אתה בטוח שברצונך לסמן את {selectedLeaveEmployee?.full_name} כעובד שעזב?
+                לאחר סימון זה, העובד לא יופיע בטבלאות ובדשבורדים הפעילים (אך יישמר במערכת ותוכל לצפות בו בעמוד "עובדים שעזבו").
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4 w-full">
+              <div className="space-y-2 text-right">
+                <Label htmlFor="leave_date">תאריך עזיבה *</Label>
+                <Input
+                  id="leave_date"
+                  type="date"
+                  dir="ltr"
+                  className="text-right"
+                  value={leaveDate}
+                  onChange={(e) => setLeaveDate(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2 text-right">
+                <Label htmlFor="leave_reason">סיבת עזיבה</Label>
+                <Input
+                  id="leave_reason"
+                  className="text-right"
+                  placeholder="הזן פירט על סיבת העזיבה (אופציונלי)"
+                  value={leaveReason}
+                  onChange={(e) => setLeaveReason(e.target.value)}
+                />
+              </div>
+            </div>
+            <DialogFooter className="w-full flex justify-start space-x-2 space-x-reverse mt-4">
+              <Button type="button" variant="outline" onClick={() => setIsLeaveDialogOpen(false)}>
+                ביטול
+              </Button>
+              <Button type="button" variant="destructive" onClick={handleLeaveConfirm} disabled={formLoading}>
+                {formLoading && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
+                אשר עזיבה
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
