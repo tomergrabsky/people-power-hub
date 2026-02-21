@@ -5,6 +5,7 @@ import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { UnauthorizedActionDialog } from '@/components/employees/UnauthorizedActionDialog';
 import {
     Table,
     TableBody,
@@ -37,7 +38,7 @@ interface Employee {
 }
 
 const LeftEmployees = () => {
-    const { user, isManager } = useAuth();
+    const { user, isManager, isSuperAdmin } = useAuth();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [jobRoles, setJobRoles] = useState<any[]>([]);
     const [leavingReasons, setLeavingReasons] = useState<any[]>([]);
@@ -53,6 +54,7 @@ const LeftEmployees = () => {
     const [editReason, setEditReason] = useState('');
     const [editNotes, setEditNotes] = useState('');
     const [editLoading, setEditLoading] = useState(false);
+    const [isUnauthorizedDialogOpen, setIsUnauthorizedDialogOpen] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -101,6 +103,10 @@ const LeftEmployees = () => {
     );
 
     const handleRestore = async (employee: Employee) => {
+        if (!isSuperAdmin) {
+            setIsUnauthorizedDialogOpen(true);
+            return;
+        }
         if (!confirm(`האם אתה בטוח שברצונך להחזיר את ${employee.full_name} לסטאטוס עובד פעיל?`)) return;
 
         setActionLoading(true);
@@ -125,6 +131,10 @@ const LeftEmployees = () => {
     };
 
     const openEditDialog = (employee: Employee) => {
+        if (!isSuperAdmin) {
+            setIsUnauthorizedDialogOpen(true);
+            return;
+        }
         setEmployeeToEdit(employee);
         setEditDate(employee.left_date ? new Date(employee.left_date).toISOString().split('T')[0] : '');
         setEditReason(employee.left_reason || '');
@@ -352,6 +362,11 @@ const LeftEmployees = () => {
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
+
+                <UnauthorizedActionDialog
+                    isOpen={isUnauthorizedDialogOpen}
+                    onClose={() => setIsUnauthorizedDialogOpen(false)}
+                />
 
             </div>
         </MainLayout>

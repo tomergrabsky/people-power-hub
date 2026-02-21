@@ -52,6 +52,7 @@ import { toast } from 'sonner';
 import { MultiSelect } from '@/components/ui/multi-select';
 import { useFormFieldOrder } from '@/hooks/useFormFieldOrder';
 import { DraggableFormContainer } from '@/components/employees/DraggableFormContainer';
+import { UnauthorizedActionDialog } from '@/components/employees/UnauthorizedActionDialog';
 import { useColumnOrder } from '@/hooks/useColumnOrder';
 import {
   DndContext,
@@ -163,6 +164,7 @@ export default function Employees() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProject, setFilterProject] = useState<string[]>([]);
+  const [isUnauthorizedDialogOpen, setIsUnauthorizedDialogOpen] = useState(false);
   const [filterRole, setFilterRole] = useState<string[]>([]);
   const [filterCity, setFilterCity] = useState<string>('');
   const [filterBranch, setFilterBranch] = useState<string[]>([]);
@@ -376,6 +378,10 @@ export default function Employees() {
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
 
   const openLeaveDialog = (employee: Employee) => {
+    if (!isSuperAdmin) {
+      setIsUnauthorizedDialogOpen(true);
+      return;
+    }
     setSelectedLeaveEmployee(employee);
     setLeaveDate(new Date().toISOString().split('T')[0]);
     setLeaveReason(employee.left_reason || '');
@@ -2653,6 +2659,11 @@ export default function Employees() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
+
+        <UnauthorizedActionDialog
+          isOpen={isUnauthorizedDialogOpen}
+          onClose={() => setIsUnauthorizedDialogOpen(false)}
+        />
       </div>
     </MainLayout>
   );
