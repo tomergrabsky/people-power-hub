@@ -22,7 +22,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, RotateCcw, Eye, Loader2, Users } from 'lucide-react';
+import { Search, RotateCcw, Eye, Loader2, Users, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface Employee {
@@ -46,6 +46,13 @@ const LeftEmployees = () => {
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [actionLoading, setActionLoading] = useState(false);
+
+    const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+    const [employeeToEdit, setEmployeeToEdit] = useState<Employee | null>(null);
+    const [editDate, setEditDate] = useState('');
+    const [editReason, setEditReason] = useState('');
+    const [editNotes, setEditNotes] = useState('');
+    const [editLoading, setEditLoading] = useState(false);
 
     useEffect(() => {
         fetchData();
@@ -115,6 +122,36 @@ const LeftEmployees = () => {
     const openViewDialog = (employee: Employee) => {
         setSelectedEmployee(employee);
         setIsViewDialogOpen(true);
+    };
+
+    const openEditDialog = (employee: Employee) => {
+        setEmployeeToEdit(employee);
+        setEditDate(employee.left_date ? new Date(employee.left_date).toISOString().split('T')[0] : '');
+        setEditReason(employee.left_reason || '');
+        setEditNotes(employee.left_notes || '');
+        setIsEditDialogOpen(true);
+    };
+
+    const handleEditSave = async () => {
+        if (!employeeToEdit || !editDate || !editReason) {
+            toast.error('יש להזין תאריך עזיבה וסיבת עזיבה');
+            return;
+        }
+        setEditLoading(true);
+        try {
+            await updateDoc(doc(db, 'employees', employeeToEdit.id), {
+                left_date: editDate,
+                left_reason: editReason,
+                left_notes: editNotes
+            });
+            toast.success('פרטי העזיבה עודכנו בהצלחה');
+            setIsEditDialogOpen(false);
+            fetchData();
+        } catch (e) {
+            toast.error('שגיאה בעדכון פרטי העזיבה');
+        } finally {
+            setEditLoading(false);
+        }
     };
 
     return (
@@ -195,6 +232,14 @@ const LeftEmployees = () => {
                                                 <Button
                                                     variant="ghost"
                                                     size="icon"
+                                                    onClick={() => openEditDialog(employee)}
+                                                    title="עריכת פרטי עזיבה"
+                                                >
+                                                    <Pencil className="w-4 h-4" />
+                                                </Button>
+                                                <Button
+                                                    variant="ghost"
+                                                    size="icon"
                                                     onClick={() => handleRestore(employee)}
                                                     title="בטל עזיבה (החזר לפעיל)"
                                                 >
@@ -249,6 +294,61 @@ const LeftEmployees = () => {
                         )}
                         <DialogFooter>
                             <Button onClick={() => setIsViewDialogOpen(false)}>סגור</Button>
+                        </DialogFooter>
+                    </DialogContent>
+                </Dialog>
+
+                <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+                    <DialogContent className="sm:max-w-md text-right">
+                        <DialogHeader>
+                            <DialogTitle className="text-right">עריכת פרטי עזיבה</DialogTitle>
+                            <DialogDescription className="text-right">
+                                עדכון תאריך, סיבה והערות לעזיבת העובד
+                            </DialogDescription>
+                        </DialogHeader>
+                        {employeeToEdit && (
+                            <div className="grid gap-4 py-4 w-full">
+                                <div className="space-y-2 text-right">
+                                    <Label htmlFor="edit_date">תאריך עזיבה *</Label>
+                                    <Input
+                                        id="edit_date"
+                                        type="date"
+                                        dir="ltr"
+                                        className="text-right"
+                                        value={editDate}
+                                        onChange={(e) => setEditDate(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2 text-right">
+                                    <Label htmlFor="edit_reason">סיבת עזיבה *</Label>
+                                    <Input
+                                        id="edit_reason"
+                                        className="text-right"
+                                        placeholder="הזן סיבת עזיבה (טקסט חופשי)..."
+                                        value={editReason}
+                                        onChange={(e) => setEditReason(e.target.value)}
+                                    />
+                                </div>
+                                <div className="space-y-2 text-right">
+                                    <Label htmlFor="edit_notes">הערות (אופציונלי)</Label>
+                                    <Input
+                                        id="edit_notes"
+                                        className="text-right"
+                                        placeholder="הזן פירוט על סיבת העזיבה"
+                                        value={editNotes}
+                                        onChange={(e) => setEditNotes(e.target.value)}
+                                    />
+                                </div>
+                            </div>
+                        )}
+                        <DialogFooter className="w-full flex justify-start space-x-2 space-x-reverse mt-4">
+                            <Button type="button" variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+                                ביטול
+                            </Button>
+                            <Button onClick={handleEditSave} disabled={editLoading}>
+                                {editLoading && <Loader2 className="w-4 h-4 ml-2 animate-spin" />}
+                                שמור שינויים
+                            </Button>
                         </DialogFooter>
                     </DialogContent>
                 </Dialog>
