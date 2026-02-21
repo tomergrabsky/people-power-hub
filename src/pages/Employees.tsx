@@ -367,6 +367,9 @@ export default function Employees() {
   const [leaveDate, setLeaveDate] = useState('');
   const [leaveReason, setLeaveReason] = useState('');
 
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
+
   const openLeaveDialog = (employee: Employee) => {
     setSelectedLeaveEmployee(employee);
     setLeaveDate(new Date().toISOString().split('T')[0]);
@@ -740,15 +743,24 @@ export default function Employees() {
     }
   };
 
-  const handleDelete = async (employee: Employee) => {
-    if (!confirm(`האם למחוק את ${employee.full_name}?`)) return;
+  const handleDelete = (employee: Employee) => {
+    setEmployeeToDelete(employee);
+    setIsDeleteDialogOpen(true);
+  };
 
+  const confirmDelete = async () => {
+    if (!employeeToDelete) return;
+    setFormLoading(true);
     try {
-      await deleteDoc(doc(db, 'employees', employee.id));
+      await deleteDoc(doc(db, 'employees', employeeToDelete.id));
       toast.success('העובד נמחק בהצלחה');
+      setIsDeleteDialogOpen(false);
+      setEmployeeToDelete(null);
       fetchData();
     } catch (error: any) {
       toast.error('שגיאה במחיקת העובד');
+    } finally {
+      setFormLoading(false);
     }
   };
 
@@ -2568,6 +2580,53 @@ export default function Employees() {
               <Button type="button" variant="destructive" onClick={handleLeaveConfirm} disabled={formLoading}>
                 {formLoading && <Loader2 className="w-4 h-4 animate-spin ml-2" />}
                 אשר עזיבה
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Confirmation Dialog */}
+        <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+          <DialogContent className="sm:max-w-md text-right flex flex-col items-end">
+            <DialogHeader className="w-full">
+              <DialogTitle className="text-right text-destructive flex items-center gap-2">
+                <Trash2 className="w-5 h-5 flex-shrink-0" /> מחיקת עובד לחלוטין
+              </DialogTitle>
+              <DialogDescription className="text-right mt-2 text-base text-foreground/90">
+                האם אתה בטוח שברצונך למחוק את <strong>{employeeToDelete?.full_name}</strong> לצמיתות מהמערכת?
+              </DialogDescription>
+              <div className="w-full bg-orange-50/50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-md p-4 mt-4 mb-2">
+                <p className="text-sm font-medium text-orange-800 dark:text-orange-300 flex items-start gap-2">
+                  <span className="text-lg">💡</span>
+                  <span>
+                    <strong>האם העובד פשוט עזב את הארגון?</strong><br />
+                    במקום למחוק מקלט השתמשו בפעולת "סימון כעוזב".<br />
+                    מחיקה תחסל את כל נתוני העובד מהמסד לצמיתות. סימון כעוזב ישמור את המידע לדוחות עתיד ויאחסן אותו בעמוד "עובדים שעזבו" ללא הצגתו בטבלאות פעילות.
+                  </span>
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="mt-3 border-orange-300 text-orange-700 hover:bg-orange-100 dark:border-orange-700 dark:text-orange-300 dark:hover:bg-orange-900/50"
+                  onClick={() => {
+                    if (employeeToDelete) {
+                      setIsDeleteDialogOpen(false);
+                      openLeaveDialog(employeeToDelete);
+                    }
+                  }}
+                >
+                  <UserMinus className="w-4 h-4 ml-2" /> במקום למחוק, העבר ל'עזב'
+                </Button>
+              </div>
+            </DialogHeader>
+            <DialogFooter className="w-full flex justify-end space-x-2 space-x-reverse mt-4 border-t pt-4">
+              <Button type="button" variant="outline" onClick={() => setIsDeleteDialogOpen(false)} disabled={formLoading}>
+                ביטול
+              </Button>
+              <Button type="button" variant="destructive" onClick={confirmDelete} disabled={formLoading}>
+                {formLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
+                מחק לצמיתות
               </Button>
             </DialogFooter>
           </DialogContent>
