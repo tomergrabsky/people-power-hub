@@ -2436,14 +2436,6 @@ export default function Employees() {
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  onClick={() => openLeaveDialog(employee)}
-                                  title="סמן כעזב"
-                                >
-                                  <UserMinus className="w-4 h-4 text-orange-500" />
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="icon"
                                   onClick={() => openEditDialog(employee)}
                                   title="עריכה"
                                 >
@@ -2457,6 +2449,14 @@ export default function Employees() {
                                   title="מחיקה"
                                 >
                                   <Trash2 className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => openLeaveDialog(employee)}
+                                  title="סמן כעזב"
+                                >
+                                  <UserMinus className="w-4 h-4 text-orange-500" />
                                 </Button>
                               </div>
                             </TableCell>
