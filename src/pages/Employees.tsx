@@ -500,9 +500,14 @@ export default function Employees() {
   };
 
   const filteredEmployees = employees.filter(emp => {
-    const matchesSearch = emp.full_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      emp.id_number.includes(searchTerm) ||
-      (emp.city?.toLowerCase().includes(searchTerm.toLowerCase()));
+    const searchLower = searchTerm.toLowerCase();
+    const strFullName = emp.full_name ? String(emp.full_name).toLowerCase() : '';
+    const strIdNum = emp.id_number ? String(emp.id_number).toLowerCase() : '';
+    const strCity = emp.city ? String(emp.city).toLowerCase() : '';
+
+    const matchesSearch = strFullName.includes(searchLower) ||
+      strIdNum.includes(searchLower) ||
+      strCity.includes(searchLower);
     const matchesProject = filterProject.length === 0 || (emp.project_id && filterProject.includes(emp.project_id));
     const matchesRole = filterRole.length === 0 || (emp.job_role_id && filterRole.includes(emp.job_role_id));
     const matchesCity = !filterCity || emp.city?.toLowerCase().includes(filterCity.toLowerCase());
