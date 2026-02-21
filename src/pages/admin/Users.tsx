@@ -1,8 +1,10 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { db } from '@/integrations/firebase/client';
+import { db, firebaseConfig } from '@/integrations/firebase/client';
 import { collection, getDocs, doc, getDoc, setDoc, deleteDoc, updateDoc, addDoc } from 'firebase/firestore';
+import { initializeApp, deleteApp } from 'firebase/app';
+import { getAuth, createUserWithEmailAndPassword, signOut as firebaseSignOut, updateProfile } from 'firebase/auth';
 import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -255,12 +257,52 @@ export default function AdminUsers() {
     }
 
     setFormLoading(true);
+    try {
+      // Initialize a secondary Firebase app to create the user without logging out the current admin
+      const secondaryApp = initializeApp(firebaseConfig, 'Secondary');
+      const secondaryAuth = getAuth(secondaryApp);
 
-    // TODO: Calling Edge Functions or creating auth via Firebase Admin SDK
-    // In client side Firebase, you'd probably just want to write this using a Cloud Function
-    // Since we don't have Admin SDK set up here, this operation will just mock or fail.
-    // For now, inform the user they cannot create users here directly without admin sdk
-    toast.error('יצירת משתמשים חדשים באמצעות Firebase Admin מנותקת זמנית.');
+      const userCredential = await createUserWithEmailAndPassword(secondaryAuth, newUserEmail, newUserPassword);
+      const newUser = userCredential.user;
+
+      // Update the new user's display name
+      await updateProfile(newUser, { displayName: newUserName });
+
+      // Save user role and profile in the main Firestore instance using the existing 'db'
+      await setDoc(doc(db, 'user_roles', newUser.uid), {
+        role: 'user',
+        full_name: newUserName,
+        email: newUserEmail
+      });
+
+      await setDoc(doc(db, 'profiles', newUser.uid), {
+        user_id: newUser.uid,
+        email: newUserEmail,
+        full_name: newUserName,
+        created_at: new Date().toISOString()
+      });
+
+      // Sign out from the secondary app and delete it
+      await firebaseSignOut(secondaryAuth);
+      await deleteApp(secondaryApp);
+
+      toast.success('המשתמש נוצר בהצלחה');
+      setIsCreateDialogOpen(false);
+
+      // Clear form
+      setNewUserName('');
+      setNewUserEmail('');
+      setNewUserPassword('');
+
+      fetchData();
+    } catch (e: any) {
+      console.error(e);
+      let errorMessage = 'שגיאה ביצירת המשתמש';
+      if (e.code === 'auth/email-already-in-use') {
+        errorMessage = 'כתובת האימייל כבר קיימת במערכת';
+      }
+      toast.error(errorMessage);
+    }
     setFormLoading(false);
   };
 
