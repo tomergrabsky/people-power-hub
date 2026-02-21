@@ -2353,7 +2353,7 @@ export default function Employees() {
                             );
                           })}
                         </SortableContext>
-                        <TableHead className="w-24">פעולות</TableHead>
+                        <TableHead className="w-24 text-right">פעולות</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
