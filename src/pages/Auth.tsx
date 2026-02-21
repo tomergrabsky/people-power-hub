@@ -54,7 +54,7 @@ export default function Auth() {
     setLoading(false);
 
     if (error) {
-      if (error.message.includes('Invalid login credentials')) {
+      if (error.message.includes('Invalid login credentials') || error.message.includes('auth/invalid-credential')) {
         toast.error('אימייל או סיסמה שגויים');
       } else {
         toast.error('שגיאה בהתחברות: ' + error.message);
