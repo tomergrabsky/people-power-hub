@@ -32,13 +32,15 @@ interface Employee {
     start_date: string;
     is_left?: boolean;
     left_date?: string;
-    left_reason?: string;
+    left_reason_id?: string;
+    left_notes?: string;
 }
 
 const LeftEmployees = () => {
     const { user, isManager } = useAuth();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [jobRoles, setJobRoles] = useState<any[]>([]);
+    const [leavingReasons, setLeavingReasons] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
@@ -52,14 +54,16 @@ const LeftEmployees = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [employeesSnap, rolesSnap] = await Promise.all([
+            const [employeesSnap, rolesSnap, reasonsSnap] = await Promise.all([
                 getDocs(collection(db, 'employees')),
                 getDocs(collection(db, 'job_roles')),
+                getDocs(collection(db, 'leaving_reasons')),
             ]);
 
             const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
             setJobRoles(mapDocs(rolesSnap));
+            setLeavingReasons(mapDocs(reasonsSnap));
             // Only keep employees that left
             setEmployees(mapDocs(employeesSnap).filter((emp: any) => emp.is_left));
         } catch (e) {
@@ -72,6 +76,11 @@ const LeftEmployees = () => {
     const getRoleName = (id: string | null) => {
         if (!id) return '-';
         return jobRoles.find(r => r.id === id)?.name || id;
+    };
+
+    const getReasonName = (id: string | null | undefined) => {
+        if (!id) return '-';
+        return leavingReasons.find(r => r.id === id)?.name || id;
     };
 
     const calculateTenure = (startDateStr: string, endDateStr?: string) => {
@@ -147,6 +156,7 @@ const LeftEmployees = () => {
                                 <TableHead className="text-right font-bold text-foreground">שם העובד</TableHead>
                                 <TableHead className="text-right">תאריך עזיבה</TableHead>
                                 <TableHead className="text-right">סיבת עזיבה</TableHead>
+                                <TableHead className="text-right">הערות</TableHead>
                                 <TableHead className="text-right">תפקיד</TableHead>
                                 <TableHead className="text-right">תאריך התחלה</TableHead>
                                 <TableHead className="text-right">תאריך עזיבה</TableHead>
@@ -173,7 +183,8 @@ const LeftEmployees = () => {
                                     <TableRow key={employee.id}>
                                         <TableCell className="font-bold text-foreground">{employee.full_name}</TableCell>
                                         <TableCell dir="ltr" className="text-left font-semibold text-destructive">{employee.left_date ? new Date(employee.left_date).toLocaleDateString('he-IL') : '-'}</TableCell>
-                                        <TableCell className="max-w-[200px] truncate">{employee.left_reason || '-'}</TableCell>
+                                        <TableCell className="max-w-[200px] truncate">{getReasonName(employee.left_reason_id)}</TableCell>
+                                        <TableCell className="max-w-[200px] truncate" title={employee.left_notes || ''}>{employee.left_notes || '-'}</TableCell>
                                         <TableCell>{getRoleName(employee.job_role_id)}</TableCell>
                                         <TableCell dir="ltr" className="text-left">{employee.start_date ? new Date(employee.start_date).toLocaleDateString('he-IL') : '-'}</TableCell>
                                         <TableCell dir="ltr" className="text-left font-semibold text-destructive">{employee.left_date ? new Date(employee.left_date).toLocaleDateString('he-IL') : '-'}</TableCell>
@@ -232,9 +243,15 @@ const LeftEmployees = () => {
                                     </div>
                                 </div>
                                 <div className="space-y-2 text-right">
-                                    <Label>סיבת העזיבה במערכת</Label>
-                                    <Input className="text-right bg-muted text-destructive font-medium" value={selectedEmployee.left_reason || '-'} disabled />
+                                    <Label>סיבת עזיבה במערכת</Label>
+                                    <Input className="text-right bg-muted text-destructive font-medium" value={getReasonName(selectedEmployee.left_reason_id)} disabled />
                                 </div>
+                                {selectedEmployee.left_notes && (
+                                    <div className="space-y-2 text-right">
+                                        <Label>הערות עזיבה</Label>
+                                        <Input className="text-right bg-muted" value={selectedEmployee.left_notes} disabled />
+                                    </div>
+                                )}
                             </div>
                         )}
                         <DialogFooter>

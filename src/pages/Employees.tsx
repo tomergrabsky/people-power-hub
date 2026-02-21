@@ -366,6 +366,7 @@ export default function Employees() {
   const [selectedLeaveEmployee, setSelectedLeaveEmployee] = useState<Employee | null>(null);
   const [leaveDate, setLeaveDate] = useState('');
   const [leaveReason, setLeaveReason] = useState('');
+  const [leaveNotes, setLeaveNotes] = useState('');
 
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [employeeToDelete, setEmployeeToDelete] = useState<Employee | null>(null);
@@ -373,13 +374,14 @@ export default function Employees() {
   const openLeaveDialog = (employee: Employee) => {
     setSelectedLeaveEmployee(employee);
     setLeaveDate(new Date().toISOString().split('T')[0]);
-    setLeaveReason('');
+    setLeaveReason(employee.leaving_reason_id || '');
+    setLeaveNotes('');
     setIsLeaveDialogOpen(true);
   };
 
   const handleLeaveConfirm = async () => {
-    if (!selectedLeaveEmployee || !leaveDate) {
-      toast.error('יש להזין תאריך עזיבה');
+    if (!selectedLeaveEmployee || !leaveDate || !leaveReason) {
+      toast.error('יש להזין תאריך עזיבה וסיבת עזיבה');
       return;
     }
     setFormLoading(true);
@@ -387,7 +389,8 @@ export default function Employees() {
       await updateDoc(doc(db, 'employees', selectedLeaveEmployee.id), {
         is_left: true,
         left_date: leaveDate,
-        left_reason: leaveReason
+        left_reason_id: leaveReason,
+        left_notes: leaveNotes
       });
       toast.success('העובד סומן כעזב בהצלחה');
       setIsLeaveDialogOpen(false);
@@ -2563,13 +2566,28 @@ export default function Employees() {
                 />
               </div>
               <div className="space-y-2 text-right">
-                <Label htmlFor="leave_reason">סיבת עזיבה</Label>
+                <Label htmlFor="leave_reason">סיבת עזיבה *</Label>
+                <Select value={leaveReason} onValueChange={setLeaveReason}>
+                  <SelectTrigger className="text-right" dir="rtl">
+                    <SelectValue placeholder="בחר סיבת עזיבה..." />
+                  </SelectTrigger>
+                  <SelectContent position="popper" side="bottom" align="end" className="w-[var(--radix-select-trigger-width)] min-w-[200px] z-50">
+                    {leavingReasons.map((reason) => (
+                      <SelectItem key={reason.id} value={reason.id} className="text-right">
+                        {reason.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2 text-right">
+                <Label htmlFor="leave_notes">הערות (אופציונלי)</Label>
                 <Input
-                  id="leave_reason"
+                  id="leave_notes"
                   className="text-right"
-                  placeholder="הזן פירט על סיבת העזיבה (אופציונלי)"
-                  value={leaveReason}
-                  onChange={(e) => setLeaveReason(e.target.value)}
+                  placeholder="הזן פירוט על סיבת העזיבה"
+                  value={leaveNotes}
+                  onChange={(e) => setLeaveNotes(e.target.value)}
                 />
               </div>
             </div>
