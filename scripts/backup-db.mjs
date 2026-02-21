@@ -1,20 +1,26 @@
-import { initializeApp } from "firebase/app";
-import { getFirestore, collection, getDocs } from "firebase/firestore";
+import admin from "firebase-admin";
 import fs from "fs";
 import path from "path";
 
-// הגדרות Firebase - הסקריפט ימשוך אותן ממשתני הסביבה בתוך GitHub
-const firebaseConfig = {
-    apiKey: process.env.VITE_FIREBASE_API_KEY,
-    authDomain: process.env.VITE_FIREBASE_AUTH_DOMAIN,
-    projectId: process.env.VITE_FIREBASE_PROJECT_ID,
-    storageBucket: process.env.VITE_FIREBASE_STORAGE_BUCKET,
-    messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-    appId: process.env.VITE_FIREBASE_APP_ID
-};
+// Initialize with Service Account for administrative access (bypasses security rules)
+// The service account JSON should be provided as a string in the environment variable
+const serviceAccountKey = process.env.FIREBASE_SERVICE_ACCOUNT;
 
-const app = initializeApp(firebaseConfig);
-const db = getFirestore(app);
+if (!serviceAccountKey) {
+    console.error("❌ שגיאה: המפתח FIREBASE_SERVICE_ACCOUNT חסר בהגדרות ה-Secrets של GitHub.");
+    process.exit(1);
+}
+
+try {
+    admin.initializeApp({
+        credential: admin.credential.cert(JSON.parse(serviceAccountKey))
+    });
+} catch (error) {
+    console.error("❌ שגיאה באתחול Firebase Admin:", error);
+    process.exit(1);
+}
+
+const db = admin.firestore();
 
 // רשימת הקולקציות שאנחנו רוצים לגבות
 const collectionsToBackup = [
@@ -32,7 +38,7 @@ const collectionsToBackup = [
 ];
 
 async function runBackup() {
-    console.log("🚀 מתחיל תהליך גיבוי...");
+    console.log("🚀 מתחיל תהליך גיבוי (Admin Mode)...");
     const backupData = {
         timestamp: new Date().toISOString(),
         collections: {}
@@ -41,8 +47,8 @@ async function runBackup() {
     try {
         for (const colName of collectionsToBackup) {
             console.log(`📦 קורא נתונים מקולקציית: ${colName}...`);
-            const querySnapshot = await getDocs(collection(db, colName));
-            backupData.collections[colName] = querySnapshot.docs.map(doc => ({
+            const snapshot = await db.collection(colName).get();
+            backupData.collections[colName] = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
@@ -50,11 +56,11 @@ async function runBackup() {
 
         const fileName = `backup_${new Date().toISOString().split('T')[0]}.json`;
         const dir = './backups';
-        
+
         if (!fs.existsSync(dir)) fs.mkdirSync(dir);
-        
+
         fs.writeFileSync(path.join(dir, fileName), JSON.stringify(backupData, null, 2));
-        console.log(`✅ הגיבוי הושלם בהצלחה ונשמר כקובץ: ${fileName}`);
+        console.log(`✅ הגיבוי הושלם בהצלחה (באומצעות Admin SDK) ונשמר כקובץ: ${fileName}`);
     } catch (error) {
         console.error("❌ שגיאה במהלך הגיבוי:", error);
         process.exit(1);
