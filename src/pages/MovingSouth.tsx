@@ -213,7 +213,6 @@ export default function MovingSouth() {
 
 
     const movingSouthColumnsConfig = [
-        { id: 'commander_summary_and_status', label: 'סיכום מפקד יחידה וסטטוס', sortable: true },
         { id: 'attentionScore', label: 'קריטיות X סיכוי לעזיבה', sortable: true },
         { id: 'unit_criticality', label: 'מידת קריטיות ליחידה', sortable: true },
         { id: 'attrition_risk', label: 'מידת סיכוי לעזיבה', sortable: true },
@@ -226,6 +225,7 @@ export default function MovingSouth() {
         { id: 'company_attrition_risk', label: 'סיכוי לעזוב (חברה)', sortable: true },
         { id: 'company_retention_plan', label: 'התייחסות למעבר דרומה (חברה)', sortable: true },
         { id: 'retention_plan', label: 'תכנית שימור (יחידה)', sortable: true },
+        { id: 'commander_summary_and_status', label: 'סיכום מפקד יחידה וסטטוס', sortable: true },
         { id: 'replacement_needed', label: 'לגייס במקומו', sortable: true },
     ];
 
