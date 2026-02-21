@@ -103,25 +103,27 @@ export function AppSidebar() {
           {!collapsed && <SidebarGroupLabel className="text-sidebar-foreground/50 text-xs px-3">ראשי</SidebarGroupLabel>}
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainNavItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <NavLink
-                      to={item.url}
-                      end
-                      className={`flex items-center py-2.5 rounded-lg transition-all duration-200 ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'
-                        } ${isActive(item.url)
-                          ? 'bg-sidebar-primary text-sidebar-primary-foreground'
-                          : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
-                        }`}
-                      activeClassName="bg-sidebar-primary text-sidebar-primary-foreground"
-                    >
-                      <item.icon className="w-5 h-5 flex-shrink-0" />
-                      {!collapsed && <span>{item.title}</span>}
-                    </NavLink>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
+              {mainNavItems
+                .filter(item => item.url !== '/moving-south' || isSuperAdmin)
+                .map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <NavLink
+                        to={item.url}
+                        end
+                        className={`flex items-center py-2.5 rounded-lg transition-all duration-200 ${collapsed ? 'justify-center px-2' : 'gap-3 px-3'
+                          } ${isActive(item.url)
+                            ? 'bg-sidebar-primary text-sidebar-primary-foreground'
+                            : 'text-sidebar-foreground/80 hover:bg-sidebar-accent hover:text-sidebar-foreground'
+                          }`}
+                        activeClassName="bg-sidebar-primary text-sidebar-primary-foreground"
+                      >
+                        <item.icon className="w-5 h-5 flex-shrink-0" />
+                        {!collapsed && <span>{item.title}</span>}
+                      </NavLink>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>

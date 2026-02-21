@@ -238,10 +238,15 @@ export default function MovingSouth() {
     const [columnOrder] = useState<string[]>(movingSouthColumnsConfig.map(c => c.id));
 
     useEffect(() => {
-        if (!authLoading && !user) {
-            navigate('/auth');
+        if (!authLoading) {
+            if (!user) {
+                navigate('/auth');
+            } else if (!isSuperAdmin) {
+                navigate('/');
+                toast.error('אין לך הרשאה לגשת לדף זה');
+            }
         }
-    }, [user, authLoading, navigate]);
+    }, [user, authLoading, isSuperAdmin, navigate]);
 
     useEffect(() => {
         if (user) {
