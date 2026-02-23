@@ -25,11 +25,14 @@ jobs:
       - name: Run Backup Script
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: node scripts/backup-db.mjs
+        run: |
+          node scripts/backup-db.mjs
+          echo "Backup file created:"
+          ls -lh backups/
 
       - name: Upload Backup Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: full-db-backup-json
+          name: database_backup_${{ github.run_number }}.zip
           path: backups/*.json
           retention-days: 90

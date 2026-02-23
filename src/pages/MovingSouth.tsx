@@ -48,6 +48,16 @@ import { Loader2, Filter, X, Users, Eye, Edit, Download, Search, ArrowUpDown, Ch
 import { toast } from 'sonner';
 import { useFormFieldOrder } from '@/hooks/useFormFieldOrder';
 import { DraggableFormContainer } from '@/components/employees/DraggableFormContainer';
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer,
+    Cell
+} from 'recharts';
 
 const criticalityLabels: Record<string, string> = {
     '0': '0 - אינו חשוב לארגון',
@@ -153,6 +163,7 @@ export default function MovingSouth() {
     const [formLoading, setFormLoading] = useState(false);
     const [isDragMode, setIsDragMode] = useState(false);
     const [activeTab, setActiveTab] = useState('general');
+    const [pageTab, setPageTab] = useState('table');
 
     const { isSuperAdmin } = useAuth();
 
@@ -396,6 +407,62 @@ export default function MovingSouth() {
 
         return data;
     }, [allEmployees, jobRoles, branches, projects, leavingReasons, movingSouthSearch, movingSouthSortConfig, movingSouthFilterProject, movingSouthFilterBranch, movingSouthFilterCriticality, movingSouthFilterAttritionRisk, movingSouthFilterReplacement]);
+
+    // Dashboard Data Calculations
+    const employeesByAttritionRisk = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (let i = 0; i <= 5; i++) {
+            counts[i.toString()] = 0;
+        }
+        counts['לא מוגדר'] = 0;
+
+        movingSouthTableData.forEach((emp) => {
+            if (emp.attrition_risk !== null && emp.attrition_risk !== undefined) {
+                counts[emp.attrition_risk.toString()] = (counts[emp.attrition_risk.toString()] || 0) + 1;
+            } else {
+                counts['לא מוגדר']++;
+            }
+        });
+
+        return [
+            ...Array.from({ length: 6 }, (_, i) => ({ name: attritionRiskLabels[i.toString()] || i.toString(), value: counts[i.toString()] })),
+            { name: 'לא מוגדר', value: counts['לא מוגדר'] },
+        ].filter((item) => item.value > 0);
+    }, [movingSouthTableData]);
+
+    const employeesByLeavingReason = useMemo(() => {
+        const counts: Record<string, number> = {};
+        movingSouthTableData.forEach((emp) => {
+            if (emp.leaving_reason_id) {
+                const reasonName = leavingReasons.find((r) => r.id === emp.leaving_reason_id)?.name || 'לא מוגדר';
+                counts[reasonName] = (counts[reasonName] || 0) + 1;
+            } else {
+                counts['לא מוגדר'] = (counts['לא מוגדר'] || 0) + 1;
+            }
+        });
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [movingSouthTableData, leavingReasons]);
+
+    const employeesByAttentionScore = useMemo(() => {
+        const counts: Record<number, number> = {};
+        for (let i = 0; i <= 25; i++) {
+            counts[i] = 0;
+        }
+
+        movingSouthTableData.forEach((emp) => {
+            const criticality = emp.unit_criticality ?? 0;
+            const attritionRisk = emp.attrition_risk ?? 0;
+            const score = criticality * attritionRisk;
+            counts[score] = (counts[score] || 0) + 1;
+        });
+
+        return Object.entries(counts)
+            .map(([score, value]) => ({ name: score, value }))
+            .filter((item) => item.value > 0)
+            .sort((a, b) => parseInt(b.name) - parseInt(a.name));
+    }, [movingSouthTableData]);
 
     const toggleSort = (key: string) => {
         setMovingSouthSortConfig(prev => {
@@ -1725,107 +1792,225 @@ export default function MovingSouth() {
                         </div>
                     </div>
 
-                    <div className="flex flex-col gap-4">
-                        <div className="flex flex-col md:flex-row gap-4">
-                            <div className="relative flex-1">
-                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                                <Input
-                                    placeholder="חיפוש חופשי..."
-                                    className="pr-10"
-                                    value={movingSouthSearch}
-                                    onChange={(e) => setMovingSouthSearch(e.target.value)}
-                                />
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                <Select value={movingSouthFilterProject} onValueChange={setMovingSouthFilterProject}>
-                                    <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר תכנית" /></SelectTrigger>
-                                    <SelectContent className="text-right">
-                                        <SelectItem value="all" className="text-right">כל התכניות</SelectItem>
-                                        {projects.map(p => (<SelectItem key={p.id} value={p.id} className="text-right">{p.name}</SelectItem>))}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={movingSouthFilterBranch} onValueChange={setMovingSouthFilterBranch}>
-                                    <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר ענף" /></SelectTrigger>
-                                    <SelectContent className="text-right">
-                                        <SelectItem value="all" className="text-right">כל הענפים</SelectItem>
-                                        {branches.map(b => (<SelectItem key={b.id} value={b.id} className="text-right">{b.name}</SelectItem>))}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={movingSouthFilterCriticality} onValueChange={setMovingSouthFilterCriticality}>
-                                    <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר קריטיות" /></SelectTrigger>
-                                    <SelectContent className="text-right">
-                                        <SelectItem value="all" className="text-right">כל רמות הקריטיות</SelectItem>
-                                        {Object.entries(criticalityLabels).map(([val, label]) => (<SelectItem key={val} value={val} className="text-right">{label}</SelectItem>))}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={movingSouthFilterAttritionRisk} onValueChange={setMovingSouthFilterAttritionRisk}>
-                                    <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר סיכוי לעזיבה" /></SelectTrigger>
-                                    <SelectContent className="text-right">
-                                        <SelectItem value="all" className="text-right">כל רמות הסיכוי</SelectItem>
-                                        {Object.entries(attritionRiskLabels).map(([val, label]) => (<SelectItem key={val} value={val} className="text-right">{label}</SelectItem>))}
-                                    </SelectContent>
-                                </Select>
-                                <Select value={movingSouthFilterReplacement} onValueChange={setMovingSouthFilterReplacement}>
-                                    <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר לגייס במקומו" /></SelectTrigger>
-                                    <SelectContent className="text-right">
-                                        <SelectItem value="all" className="text-right">הכל (גיוס חליפי)</SelectItem>
-                                        <SelectItem value="כן" className="text-right">כן</SelectItem>
-                                        <SelectItem value="לא" className="text-right">לא</SelectItem>
-                                        <SelectItem value="טרם הוחלט" className="text-right">טרם הוחלט</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                    </div>
+                    <Tabs value={pageTab} onValueChange={setPageTab} dir="rtl" className="w-full">
+                        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+                            <TabsTrigger value="table">טבלת נתונים</TabsTrigger>
+                            <TabsTrigger value="dashboards">דשבורדים</TabsTrigger>
+                        </TabsList>
 
-                    <div className="table-container bg-card border rounded-lg overflow-hidden">
-                        <div className="h-[600px] w-full overflow-auto relative scrollbar-always-visible" dir="rtl">
-                            <div className="min-w-max">
-                                <Table className="border-separate border-spacing-0" noWrapper>
-                                    <TableHeader className="sticky top-0 z-30 shadow-sm">
-                                        <TableRow>
-                                            {movingSouthColumnsConfig.map(col => {
-                                                if (!visibleColumns[col.id]) return null;
-                                                return (
-                                                    <TableHead key={col.id} className="text-right whitespace-normal px-4 py-3 border-b min-w-[140px] max-w-[180px] align-top bg-muted/95 backdrop-blur-sm sticky top-0 z-10">
-                                                        <Button variant="ghost" className="h-auto gap-2 p-0 hover:bg-transparent font-semibold text-foreground group text-right flex items-start whitespace-normal w-full" onClick={() => toggleSort(col.id)}>
-                                                            <span className="leading-tight flex-1">{col.label}</span>
-                                                            {movingSouthSortConfig?.key === col.id ? (
-                                                                movingSouthSortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-primary shrink-0 mt-0.5" /> : <ChevronDown className="w-4 h-4 text-primary shrink-0 mt-0.5" />
-                                                            ) : (
-                                                                <ArrowUpDown className="w-4 h-4 opacity-0 group-hover:opacity-50 transition-opacity shrink-0 mt-0.5" />
-                                                            )}
-                                                        </Button>
-                                                    </TableHead>
-                                                );
-                                            })}
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {movingSouthTableData.map((emp) => (
-                                            <TableRow
-                                                key={emp.id}
-                                                className="hover:bg-muted/30 transition-colors group cursor-pointer"
-                                                onClick={() => handleOpenEdit(emp)}
-                                            >
-                                                {movingSouthColumnsConfig.map(col => {
-                                                    if (!visibleColumns[col.id]) return null;
-                                                    let content: any = (emp as any)[col.id];
-                                                    if (col.id === 'unit_criticality') content = getCriticalityLabel(emp.unit_criticality);
-                                                    if (col.id === 'attrition_risk') content = getAttritionRiskLabel(emp.attrition_risk);
-                                                    return (
-                                                        <TableCell key={col.id} className={`text-right px-4 py-3 whitespace-nowrap border-b ${col.id === 'attentionScore' ? 'font-bold text-primary' : ''}`}>
-                                                            {content ?? '-'}
-                                                        </TableCell>
-                                                    );
-                                                })}
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                        <TabsContent value="table" className="space-y-6 mt-6">
+                            <div className="flex flex-col gap-4">
+                                <div className="flex flex-col md:flex-row gap-4">
+                                    <div className="relative flex-1">
+                                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                        <Input
+                                            placeholder="חיפוש חופשי..."
+                                            className="pr-10"
+                                            value={movingSouthSearch}
+                                            onChange={(e) => setMovingSouthSearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <div className="flex flex-wrap gap-2">
+                                        <Select value={movingSouthFilterProject} onValueChange={setMovingSouthFilterProject}>
+                                            <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר תכנית" /></SelectTrigger>
+                                            <SelectContent className="text-right">
+                                                <SelectItem value="all" className="text-right">כל התכניות</SelectItem>
+                                                {projects.map(p => (<SelectItem key={p.id} value={p.id} className="text-right">{p.name}</SelectItem>))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={movingSouthFilterBranch} onValueChange={setMovingSouthFilterBranch}>
+                                            <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר ענף" /></SelectTrigger>
+                                            <SelectContent className="text-right">
+                                                <SelectItem value="all" className="text-right">כל הענפים</SelectItem>
+                                                {branches.map(b => (<SelectItem key={b.id} value={b.id} className="text-right">{b.name}</SelectItem>))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={movingSouthFilterCriticality} onValueChange={setMovingSouthFilterCriticality}>
+                                            <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר קריטיות" /></SelectTrigger>
+                                            <SelectContent className="text-right">
+                                                <SelectItem value="all" className="text-right">כל רמות הקריטיות</SelectItem>
+                                                {Object.entries(criticalityLabels).map(([val, label]) => (<SelectItem key={val} value={val} className="text-right">{label}</SelectItem>))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={movingSouthFilterAttritionRisk} onValueChange={setMovingSouthFilterAttritionRisk}>
+                                            <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר סיכוי לעזיבה" /></SelectTrigger>
+                                            <SelectContent className="text-right">
+                                                <SelectItem value="all" className="text-right">כל רמות הסיכוי</SelectItem>
+                                                {Object.entries(attritionRiskLabels).map(([val, label]) => (<SelectItem key={val} value={val} className="text-right">{label}</SelectItem>))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Select value={movingSouthFilterReplacement} onValueChange={setMovingSouthFilterReplacement}>
+                                            <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר לגייס במקומו" /></SelectTrigger>
+                                            <SelectContent className="text-right">
+                                                <SelectItem value="all" className="text-right">הכל (גיוס חליפי)</SelectItem>
+                                                <SelectItem value="כן" className="text-right">כן</SelectItem>
+                                                <SelectItem value="לא" className="text-right">לא</SelectItem>
+                                                <SelectItem value="טרם הוחלט" className="text-right">טרם הוחלט</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                    </div>
+
+                            <div className="table-container bg-card border rounded-lg overflow-hidden">
+                                <div className="h-[600px] w-full overflow-auto relative scrollbar-always-visible" dir="rtl">
+                                    <div className="min-w-max">
+                                        <Table className="border-separate border-spacing-0" noWrapper>
+                                            <TableHeader className="sticky top-0 z-30 shadow-sm">
+                                                <TableRow>
+                                                    {movingSouthColumnsConfig.map(col => {
+                                                        if (!visibleColumns[col.id]) return null;
+                                                        return (
+                                                            <TableHead key={col.id} className="text-right whitespace-normal px-4 py-3 border-b min-w-[140px] max-w-[180px] align-top bg-muted/95 backdrop-blur-sm sticky top-0 z-10">
+                                                                <Button variant="ghost" className="h-auto gap-2 p-0 hover:bg-transparent font-semibold text-foreground group text-right flex items-start whitespace-normal w-full" onClick={() => toggleSort(col.id)}>
+                                                                    <span className="leading-tight flex-1">{col.label}</span>
+                                                                    {movingSouthSortConfig?.key === col.id ? (
+                                                                        movingSouthSortConfig.direction === 'asc' ? <ChevronUp className="w-4 h-4 text-primary shrink-0 mt-0.5" /> : <ChevronDown className="w-4 h-4 text-primary shrink-0 mt-0.5" />
+                                                                    ) : (
+                                                                        <ArrowUpDown className="w-4 h-4 opacity-0 group-hover:opacity-50 transition-opacity shrink-0 mt-0.5" />
+                                                                    )}
+                                                                </Button>
+                                                            </TableHead>
+                                                        );
+                                                    })}
+                                                </TableRow>
+                                            </TableHeader>
+                                            <TableBody>
+                                                {movingSouthTableData.map((emp) => (
+                                                    <TableRow
+                                                        key={emp.id}
+                                                        className="hover:bg-muted/30 transition-colors group cursor-pointer"
+                                                        onClick={() => handleOpenEdit(emp)}
+                                                    >
+                                                        {movingSouthColumnsConfig.map(col => {
+                                                            if (!visibleColumns[col.id]) return null;
+                                                            let content: any = (emp as any)[col.id];
+                                                            if (col.id === 'unit_criticality') content = getCriticalityLabel(emp.unit_criticality);
+                                                            if (col.id === 'attrition_risk') content = getAttritionRiskLabel(emp.attrition_risk);
+                                                            return (
+                                                                <TableCell key={col.id} className={`text-right px-4 py-3 whitespace-nowrap border-b ${col.id === 'attentionScore' ? 'font-bold text-primary' : ''}`}>
+                                                                    {content ?? '-'}
+                                                                </TableCell>
+                                                            );
+                                                        })}
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </div>
+                                </div>
+                            </div>
+                        </TabsContent>
+
+                        <TabsContent value="dashboards" className="mt-6 space-y-6">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <Card className="glass-card">
+                                    <CardHeader>
+                                        <CardTitle>התפלגות עובדים לפי סיכוי לעזיבה</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="h-80">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={employeesByAttritionRisk}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                    <Tooltip
+                                                        content={({ active, payload, label }) => {
+                                                            if (active && payload && payload.length) {
+                                                                return (
+                                                                    <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-right">
+                                                                        <p className="font-medium text-foreground">רמת סיכוי: {label}</p>
+                                                                        <p className="text-primary">{payload[0].value} עובדים</p>
+                                                                    </div>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        }}
+                                                    />
+                                                    <Bar
+                                                        dataKey="value"
+                                                        fill="hsl(var(--destructive))"
+                                                        radius={[4, 4, 0, 0]}
+                                                    />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+
+                                <Card className="glass-card">
+                                    <CardHeader>
+                                        <CardTitle>התפלגות עובדים לפי סיבת רצון לעזוב - קטגוריות</CardTitle>
+                                    </CardHeader>
+                                    <CardContent>
+                                        <div className="h-80">
+                                            <ResponsiveContainer width="100%" height="100%">
+                                                <BarChart data={employeesByLeavingReason}>
+                                                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                    <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                    <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                    <Tooltip
+                                                        content={({ active, payload, label }) => {
+                                                            if (active && payload && payload.length) {
+                                                                return (
+                                                                    <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-right">
+                                                                        <p className="font-medium text-foreground">{label}</p>
+                                                                        <p className="text-primary">{payload[0].value} עובדים</p>
+                                                                    </div>
+                                                                );
+                                                            }
+                                                            return null;
+                                                        }}
+                                                    />
+                                                    <Bar
+                                                        dataKey="value"
+                                                        fill="hsl(330, 70%, 50%)"
+                                                        radius={[4, 4, 0, 0]}
+                                                    />
+                                                </BarChart>
+                                            </ResponsiveContainer>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            </div>
+
+                            <Card className="glass-card">
+                                <CardHeader>
+                                    <CardTitle>עובדים הדורשים שימור (קריטיות × סיכוי לעזיבה)</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-80">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={employeesByAttentionScore}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                <Tooltip
+                                                    content={({ active, payload, label }) => {
+                                                        if (active && payload && payload.length) {
+                                                            return (
+                                                                <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-right">
+                                                                    <p className="font-medium text-foreground">ציון דחיפות: {label}</p>
+                                                                    <p className="text-primary">{payload[0].value} עובדים</p>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }}
+                                                />
+                                                <Bar
+                                                    dataKey="value"
+                                                    fill="hsl(38, 92%, 50%)"
+                                                    radius={[4, 4, 0, 0]}
+                                                />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </TabsContent>
+                    </Tabs>
 
                     {/* Employee Detail Dialog */}
                     <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
