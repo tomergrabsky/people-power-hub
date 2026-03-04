@@ -2323,7 +2323,7 @@ export default function Employees() {
         </div>
 
         {/* Table */}
-        <div className="table-container overflow-x-auto w-full pb-4">
+        <div className="table-container overflow-x-auto w-full pb-4 scrollbar-always-visible">
           <ContextMenu>
             <ContextMenuTrigger asChild>
               <div>
