@@ -118,7 +118,7 @@ export default function AdminUsers() {
       const [rolesSnap, projectsSnap, profilesSnap] = await Promise.all([
         getDocs(collection(db, 'user_roles')),
         getDocs(collection(db, 'projects')),
-        getDocs(collection(db, 'profiles')) // Note: Assuming profiles is a valid firestore collection
+        getDocs(collection(db, 'profiles'))
       ]);
 
       const roles = rolesSnap.docs.map(doc => ({ user_id: doc.id, ...doc.data() }));
@@ -126,17 +126,24 @@ export default function AdminUsers() {
 
       const profiles = profilesSnap.docs.map(doc => ({ user_id: doc.id, ...doc.data() }));
 
-      const usersWithRoles = profiles.map((profile: any) => {
-        const userRole = roles.find((r) => r.user_id === profile.user_id);
-        return {
-          id: profile.user_id,
-          user_id: profile.user_id,
-          email: profile.email || '',
-          full_name: profile.full_name || '',
-          role: ((userRole as any)?.role as AppRole) || 'user',
-          created_at: profile.created_at || new Date().toISOString(),
-        };
-      });
+      const usersWithRoles = profiles
+        .map((profile: any) => {
+          const userRole = roles.find((r) => r.user_id === profile.user_id);
+          const isDeleted = (userRole as any)?.is_deleted === true;
+
+          if (isDeleted) return null;
+
+          return {
+            id: profile.user_id,
+            user_id: profile.user_id,
+            email: profile.email || '',
+            full_name: profile.full_name || '',
+            role: ((userRole as any)?.role as AppRole) || 'user',
+            created_at: profile.created_at || new Date().toISOString(),
+          };
+        })
+        .filter(Boolean) as UserWithRole[];
+
       setUsers(usersWithRoles);
       setProjects(projectsData);
     } catch (e) {
@@ -310,8 +317,17 @@ export default function AdminUsers() {
     if (!selectedUser) return;
 
     setFormLoading(true);
-    // TODO: Again Admin SDK is needed.
-    toast.error('מחיקת משתמשים מחייבת Firebase Admin פונקציות וזה מנותק כרגע.');
+    try {
+      const roleRef = doc(db, 'user_roles', selectedUser.user_id);
+      await updateDoc(roleRef, { is_deleted: true });
+
+      toast.success('המערכת תמנע מהמשתמש להתחבר שוב');
+      setIsDeleteDialogOpen(false);
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      toast.error('שגיאה במחיקת המשתמש');
+    }
     setFormLoading(false);
   };
 

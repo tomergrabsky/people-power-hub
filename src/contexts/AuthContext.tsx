@@ -9,6 +9,7 @@ import {
 } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../integrations/firebase/client';
+import { toast } from 'sonner';
 
 type AppRole = 'user' | 'manager' | 'super_admin';
 
@@ -37,7 +38,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const docSnap = await getDoc(roleRef);
 
       if (docSnap.exists()) {
-        setRole(docSnap.data().role as AppRole);
+        const data = docSnap.data();
+        if (data.is_deleted === true) {
+          await firebaseSignOut(auth);
+          setUser(null);
+          setRole(null);
+          toast.error('חשבונך בוטל. פנה למנהל המערכת.');
+          return;
+        }
+        setRole(data.role as AppRole);
       } else {
         // If the user logs in via Google the first time, they won't have a role,
         // create a default role for them and their profile.
