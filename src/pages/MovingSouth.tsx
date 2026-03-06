@@ -1908,18 +1908,7 @@ export default function MovingSouth() {
                         <TabsContent value="table" className="space-y-6 mt-6">
                             <div className="flex flex-col gap-4">
                                 <div className="flex flex-col md:flex-row items-end md:items-center gap-4">
-                                    <div className="relative w-full md:w-80">
-                                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                                            <Search className="h-4 w-4 text-muted-foreground" />
-                                        </div>
-                                        <Input
-                                            placeholder="חיפוש חופשי..."
-                                            className="pr-10 text-right"
-                                            value={movingSouthSearch}
-                                            onChange={(e) => setMovingSouthSearch(e.target.value)}
-                                        />
-                                    </div>
-                                    <div className="flex flex-wrap gap-2 flex-1 justify-end">
+                                    <div className="flex flex-wrap gap-2 flex-1 justify-start">
                                         <div className="w-[180px]">
                                             <MultiSelect
                                                 placeholder="פילטר תכנית"
@@ -1976,6 +1965,17 @@ export default function MovingSouth() {
                                                 <SelectItem value="טרם הוחלט" className="text-right">טרם הוחלט</SelectItem>
                                             </SelectContent>
                                         </Select>
+                                    </div>
+                                    <div className="relative w-full md:w-80">
+                                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                            <Search className="h-4 w-4 text-muted-foreground" />
+                                        </div>
+                                        <Input
+                                            placeholder="חיפוש חופשי..."
+                                            className="pr-10 text-right"
+                                            value={movingSouthSearch}
+                                            onChange={(e) => setMovingSouthSearch(e.target.value)}
+                                        />
                                     </div>
                                 </div>
                             </div>
