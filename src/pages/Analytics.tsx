@@ -1438,7 +1438,13 @@ export default function Analytics() {
                                     return null;
                                   }}
                                 />
-                                <Bar dataKey="cost" fill="hsl(38, 92%, 50%)" radius={[4, 4, 0, 0]} />
+                                <Bar
+                                  dataKey="cost"
+                                  fill="hsl(38, 92%, 50%)"
+                                  radius={[4, 4, 0, 0]}
+                                  onClick={(data) => handleProgramClick(data.name)}
+                                  style={{ cursor: 'pointer' }}
+                                />
                               </BarChart>
                             </ResponsiveContainer>
                           </div>
@@ -1471,7 +1477,13 @@ export default function Analytics() {
                                     return null;
                                   }}
                                 />
-                                <Bar dataKey="cost" fill="hsl(var(--accent))" radius={[4, 4, 0, 0]} />
+                                <Bar
+                                  dataKey="cost"
+                                  fill="hsl(var(--accent))"
+                                  radius={[4, 4, 0, 0]}
+                                  onClick={(data) => handleBranchClick(data.name)}
+                                  style={{ cursor: 'pointer' }}
+                                />
                               </BarChart>
                             </ResponsiveContainer>
                           </div>
@@ -1670,7 +1682,13 @@ export default function Analytics() {
                                 return null;
                               }}
                             />
-                            <Bar dataKey="cost" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                            <Bar
+                              dataKey="cost"
+                              fill="hsl(var(--primary))"
+                              radius={[4, 4, 0, 0]}
+                              onClick={(data) => handleCompanyClick(data.name)}
+                              style={{ cursor: 'pointer' }}
+                            />
                           </BarChart>
                         </ResponsiveContainer>
                       </div>
