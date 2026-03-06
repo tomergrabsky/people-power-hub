@@ -58,6 +58,7 @@ interface UserWithRole {
   full_name: string | null;
   role: AppRole;
   created_at?: string;
+  is_deleted?: boolean;
 }
 
 interface Project {
@@ -90,6 +91,7 @@ export default function AdminUsers() {
   const [selectedProjects, setSelectedProjects] = useState<string[]>([]);
   const [formLoading, setFormLoading] = useState(false);
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+  const [showDeleted, setShowDeleted] = useState(false);
 
   // Create user form
   const [newUserName, setNewUserName] = useState('');
@@ -109,7 +111,7 @@ export default function AdminUsers() {
     if (user && isSuperAdmin) {
       fetchData();
     }
-  }, [user, isSuperAdmin]);
+  }, [user, isSuperAdmin, showDeleted]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -131,7 +133,7 @@ export default function AdminUsers() {
           const userRole = roles.find((r) => r.user_id === profile.user_id);
           const isDeleted = (userRole as any)?.is_deleted === true;
 
-          if (isDeleted) return null;
+          if (isDeleted && !showDeleted) return null;
 
           return {
             id: profile.user_id,
@@ -140,9 +142,10 @@ export default function AdminUsers() {
             full_name: profile.full_name || '',
             role: ((userRole as any)?.role as AppRole) || 'user',
             created_at: profile.created_at || new Date().toISOString(),
+            is_deleted: isDeleted
           };
         })
-        .filter(Boolean) as UserWithRole[];
+        .filter(Boolean) as (UserWithRole & { is_deleted: boolean })[];
 
       setUsers(usersWithRoles);
       setProjects(projectsData);
@@ -331,6 +334,21 @@ export default function AdminUsers() {
     setFormLoading(false);
   };
 
+  const handleRestoreUser = async (userItem: UserWithRole) => {
+    setFormLoading(true);
+    try {
+      const roleRef = doc(db, 'user_roles', userItem.user_id);
+      await updateDoc(roleRef, { is_deleted: false });
+
+      toast.success('המשתמש שוחזר בהצלחה');
+      fetchData();
+    } catch (e) {
+      console.error(e);
+      toast.error('שגיאה בשחזור המשתמש');
+    }
+    setFormLoading(false);
+  };
+
   const toggleProject = (projectId: string) => {
     setSelectedProjects((prev) =>
       prev.includes(projectId)
@@ -359,10 +377,20 @@ export default function AdminUsers() {
             <h1 className="text-3xl font-bold text-foreground">ניהול משתמשים</h1>
             <p className="text-muted-foreground mt-1">יצירה, עריכה ומחיקה של משתמשים</p>
           </div>
-          <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
-            <Plus className="w-4 h-4" />
-            משתמש חדש
-          </Button>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2 bg-secondary/50 px-3 py-2 rounded-lg border border-border">
+              <Checkbox
+                id="show-deleted"
+                checked={showDeleted}
+                onCheckedChange={(checked) => setShowDeleted(!!checked)}
+              />
+              <Label htmlFor="show-deleted" className="cursor-pointer text-sm font-medium">הצג משתמשים מחוקים</Label>
+            </div>
+            <Button onClick={() => setIsCreateDialogOpen(true)} className="gap-2">
+              <Plus className="w-4 h-4" />
+              משתמש חדש
+            </Button>
+          </div>
         </div>
 
         <Card className="glass-card">
@@ -406,36 +434,50 @@ export default function AdminUsers() {
                       </TableCell>
                       <TableCell>
                         <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditDialog(userItem)}
-                            title="שנה הרשאה"
-                          >
-                            <Shield className="w-4 h-4 ml-1" />
-                            הרשאה
-                          </Button>
-                          {(userItem.role === 'user' || userItem.role === 'manager') && (
+                          {userItem.is_deleted ? (
                             <Button
-                              variant="ghost"
+                              variant="outline"
                               size="sm"
-                              onClick={() => openProjectsDialog(userItem)}
-                              title="שייך לתכניות"
+                              onClick={() => handleRestoreUser(userItem)}
+                              className="text-green-600 hover:text-green-700 hover:bg-green-50"
+                              title="שחזר משתמש"
                             >
-                              <Pencil className="w-4 h-4 ml-1" />
-                              תכניות
+                              שחזר משתמש
                             </Button>
-                          )}
-                          {userItem.user_id !== user?.uid && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => openDeleteDialog(userItem)}
-                              className="text-destructive hover:text-destructive"
-                              title="מחק משתמש"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                            </Button>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => openEditDialog(userItem)}
+                                title="שנה הרשאה"
+                              >
+                                <Shield className="w-4 h-4 ml-1" />
+                                הרשאה
+                              </Button>
+                              {(userItem.role === 'user' || userItem.role === 'manager') && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openProjectsDialog(userItem)}
+                                  title="שייך לתכניות"
+                                >
+                                  <Pencil className="w-4 h-4 ml-1" />
+                                  תכניות
+                                </Button>
+                              )}
+                              {userItem.user_id !== user?.uid && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openDeleteDialog(userItem)}
+                                  className="text-destructive hover:text-destructive"
+                                  title="מחק משתמש"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              )}
+                            </>
                           )}
                         </div>
                       </TableCell>

@@ -176,6 +176,11 @@ export default function MovingSouth() {
     const [isDashboardAttentionScoreDialogOpen, setIsDashboardAttentionScoreDialogOpen] = useState(false);
     const [selectedDashboardCompanyAttritionRisk, setSelectedDashboardCompanyAttritionRisk] = useState<string | null>(null);
     const [isDashboardCompanyAttritionRiskDialogOpen, setIsDashboardCompanyAttritionRiskDialogOpen] = useState(false);
+    const [selectedDashboardCriticality, setSelectedDashboardCriticality] = useState<string | null>(null);
+    const [isDashboardCriticalityDialogOpen, setIsDashboardCriticalityDialogOpen] = useState(false);
+    const [dashboardFilterBranch, setDashboardFilterBranch] = useState<string[]>([]);
+    const [selectedMatrixCell, setSelectedMatrixCell] = useState<{ criticality: number; risk: number } | null>(null);
+    const [isMatrixDialogOpen, setIsMatrixDialogOpen] = useState(false);
 
     const { isSuperAdmin } = useAuth();
 
@@ -435,6 +440,14 @@ export default function MovingSouth() {
         return data;
     }, [allEmployees, jobRoles, branches, projects, employingCompanies, leavingReasons, movingSouthSearch, movingSouthSortConfig, movingSouthFilterProject, movingSouthFilterBranch, movingSouthFilterCompany, movingSouthFilterCriticality, movingSouthFilterAttritionRisk, movingSouthFilterReplacement]);
 
+    const filteredDashboardData = useMemo(() => {
+        if (dashboardFilterBranch.length === 0) return movingSouthTableData;
+        return movingSouthTableData.filter(emp => {
+            const branchId = emp.branch_id || 'none';
+            return dashboardFilterBranch.includes(branchId);
+        });
+    }, [movingSouthTableData, dashboardFilterBranch]);
+
     // Dashboard Data Calculations
     const employeesByAttritionRisk = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -443,7 +456,7 @@ export default function MovingSouth() {
         }
         counts['לא מוגדר'] = 0;
 
-        movingSouthTableData.forEach((emp) => {
+        filteredDashboardData.forEach((emp) => {
             if (emp.attrition_risk !== null && emp.attrition_risk !== undefined) {
                 counts[emp.attrition_risk.toString()] = (counts[emp.attrition_risk.toString()] || 0) + 1;
             } else {
@@ -455,7 +468,7 @@ export default function MovingSouth() {
             ...Array.from({ length: 6 }, (_, i) => ({ name: attritionRiskLabels[i.toString()] || i.toString(), value: counts[i.toString()] })),
             { name: 'לא מוגדר', value: counts['לא מוגדר'] },
         ].filter((item) => item.value > 0);
-    }, [movingSouthTableData]);
+    }, [filteredDashboardData]);
 
     const employeesByCompanyAttritionRisk = useMemo(() => {
         const counts: Record<string, number> = {};
@@ -464,7 +477,7 @@ export default function MovingSouth() {
         }
         counts['לא מוגדר'] = 0;
 
-        movingSouthTableData.forEach((emp) => {
+        filteredDashboardData.forEach((emp) => {
             if (emp.company_attrition_risk !== null && emp.company_attrition_risk !== undefined) {
                 counts[emp.company_attrition_risk.toString()] = (counts[emp.company_attrition_risk.toString()] || 0) + 1;
             } else {
@@ -476,11 +489,32 @@ export default function MovingSouth() {
             ...Array.from({ length: 6 }, (_, i) => ({ name: attritionRiskLabels[i.toString()] || i.toString(), value: counts[i.toString()] })),
             { name: 'לא מוגדר', value: counts['לא מוגדר'] },
         ].filter((item) => item.value > 0);
-    }, [movingSouthTableData]);
+    }, [filteredDashboardData]);
+
+    const employeesByCriticality = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (let i = 0; i <= 5; i++) {
+            counts[i.toString()] = 0;
+        }
+        counts['לא מוגדר'] = 0;
+
+        filteredDashboardData.forEach((emp) => {
+            if (emp.unit_criticality !== null && emp.unit_criticality !== undefined) {
+                counts[emp.unit_criticality.toString()] = (counts[emp.unit_criticality.toString()] || 0) + 1;
+            } else {
+                counts['לא מוגדר']++;
+            }
+        });
+
+        return [
+            ...Array.from({ length: 6 }, (_, i) => ({ name: criticalityLabels[i.toString()] || i.toString(), value: counts[i.toString()] })),
+            { name: 'לא מוגדר', value: counts['לא מוגדר'] },
+        ].filter((item) => item.value > 0);
+    }, [filteredDashboardData]);
 
     const employeesByLeavingReason = useMemo(() => {
         const counts: Record<string, number> = {};
-        movingSouthTableData.forEach((emp) => {
+        filteredDashboardData.forEach((emp) => {
             if (emp.leaving_reason_id) {
                 const reasonName = leavingReasons.find((r) => r.id === emp.leaving_reason_id)?.name || 'לא מוגדר';
                 counts[reasonName] = (counts[reasonName] || 0) + 1;
@@ -491,7 +525,7 @@ export default function MovingSouth() {
         return Object.entries(counts)
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
-    }, [movingSouthTableData, leavingReasons]);
+    }, [filteredDashboardData, leavingReasons]);
 
     const employeesByAttentionScore = useMemo(() => {
         const counts: Record<number, number> = {};
@@ -499,7 +533,7 @@ export default function MovingSouth() {
             counts[i] = 0;
         }
 
-        movingSouthTableData.forEach((emp) => {
+        filteredDashboardData.forEach((emp) => {
             const criticality = emp.unit_criticality ?? 0;
             const attritionRisk = emp.attrition_risk ?? 0;
             const score = criticality * attritionRisk;
@@ -510,46 +544,83 @@ export default function MovingSouth() {
             .map(([score, value]) => ({ name: score, value }))
             .filter((item) => item.value > 0)
             .sort((a, b) => parseInt(b.name) - parseInt(a.name));
-    }, [movingSouthTableData]);
+    }, [filteredDashboardData]);
+
+    const riskCriticalityGrid = useMemo(() => {
+        const grid: Record<string, number> = {};
+        for (let c = 1; c <= 5; c++) {
+            for (let r = 1; r <= 5; r++) {
+                grid[`${c}-${r}`] = 0;
+            }
+        }
+
+        filteredDashboardData.forEach(emp => {
+            const criticality = emp.unit_criticality;
+            const risk = emp.attrition_risk;
+            if (criticality && risk && criticality >= 1 && criticality <= 5 && risk >= 1 && risk <= 5) {
+                grid[`${criticality}-${risk}`]++;
+            }
+        });
+
+        return grid;
+    }, [filteredDashboardData]);
 
     // Dashboard Drill-down Memoized Lists
     const employeesInSelectedDashboardAttritionRisk = useMemo(() => {
         if (!selectedDashboardAttritionRisk) return [];
-        return movingSouthTableData.filter(emp => {
+        return filteredDashboardData.filter(emp => {
             if (selectedDashboardAttritionRisk === 'לא מוגדר') {
                 return emp.attrition_risk === null || emp.attrition_risk === undefined;
             }
             return getAttritionRiskLabel(emp.attrition_risk) === selectedDashboardAttritionRisk;
         }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
-    }, [movingSouthTableData, selectedDashboardAttritionRisk]);
+    }, [filteredDashboardData, selectedDashboardAttritionRisk]);
 
     const employeesInSelectedDashboardLeavingReason = useMemo(() => {
         if (!selectedDashboardLeavingReason) return [];
-        return movingSouthTableData.filter(emp => {
+        return filteredDashboardData.filter(emp => {
             const reasonName = leavingReasons.find((r) => r.id === emp.leaving_reason_id)?.name || 'לא מוגדר';
             return reasonName === selectedDashboardLeavingReason;
         }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
-    }, [movingSouthTableData, selectedDashboardLeavingReason, leavingReasons]);
+    }, [filteredDashboardData, selectedDashboardLeavingReason, leavingReasons]);
 
     const employeesInSelectedDashboardAttentionScore = useMemo(() => {
         if (!selectedDashboardAttentionScore) return [];
         const targetScore = parseInt(selectedDashboardAttentionScore);
-        return movingSouthTableData.filter(emp => {
+        return filteredDashboardData.filter(emp => {
             const criticality = emp.unit_criticality ?? 0;
             const attritionRisk = emp.attrition_risk ?? 0;
             return criticality * attritionRisk === targetScore;
         }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
-    }, [movingSouthTableData, selectedDashboardAttentionScore]);
+    }, [filteredDashboardData, selectedDashboardAttentionScore]);
 
     const employeesInSelectedDashboardCompanyAttritionRisk = useMemo(() => {
         if (!selectedDashboardCompanyAttritionRisk) return [];
-        return movingSouthTableData.filter(emp => {
+        return filteredDashboardData.filter(emp => {
             if (selectedDashboardCompanyAttritionRisk === 'לא מוגדר') {
                 return emp.company_attrition_risk === null || emp.company_attrition_risk === undefined;
             }
             return getAttritionRiskLabel(emp.company_attrition_risk) === selectedDashboardCompanyAttritionRisk;
         }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
-    }, [movingSouthTableData, selectedDashboardCompanyAttritionRisk]);
+    }, [filteredDashboardData, selectedDashboardCompanyAttritionRisk]);
+
+    const employeesInSelectedDashboardCriticality = useMemo(() => {
+        if (!selectedDashboardCriticality) return [];
+        return filteredDashboardData.filter(emp => {
+            if (selectedDashboardCriticality === 'לא מוגדר') {
+                return emp.unit_criticality === null || emp.unit_criticality === undefined;
+            }
+            return getCriticalityLabel(emp.unit_criticality) === selectedDashboardCriticality;
+        }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
+    }, [filteredDashboardData, selectedDashboardCriticality]);
+
+    const employeesInSelectedMatrixCell = useMemo(() => {
+        if (!selectedMatrixCell) return [];
+        const { criticality, risk } = selectedMatrixCell;
+        return filteredDashboardData.filter(emp =>
+            emp.unit_criticality === criticality && emp.attrition_risk === risk
+        ).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
+    }, [filteredDashboardData, selectedMatrixCell]);
 
     const handleAttritionRiskClick = (riskLabel: string) => {
         setSelectedDashboardAttritionRisk(riskLabel);
@@ -569,6 +640,11 @@ export default function MovingSouth() {
     const handleCompanyAttritionRiskClick = (riskLabel: string) => {
         setSelectedDashboardCompanyAttritionRisk(riskLabel);
         setIsDashboardCompanyAttritionRiskDialogOpen(true);
+    };
+
+    const handleCriticalityClick = (criticalityLabel: string) => {
+        setSelectedDashboardCriticality(criticalityLabel);
+        setIsDashboardCriticalityDialogOpen(true);
     };
 
     const toggleSort = (key: string) => {
@@ -2031,6 +2107,35 @@ export default function MovingSouth() {
                         </TabsContent>
 
                         <TabsContent value="dashboards" className="mt-6 space-y-6">
+                            <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg">
+                                <div className="flex flex-wrap items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Filter className="h-4 w-4 text-muted-foreground mr-1" />
+                                        <MultiSelect
+                                            options={branches.map(b => ({ label: b.name, value: b.id }))}
+                                            selected={dashboardFilterBranch}
+                                            onChange={setDashboardFilterBranch}
+                                            placeholder="סינון לפי ענף"
+                                            className="w-[200px]"
+                                        />
+                                    </div>
+                                    {dashboardFilterBranch.length > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setDashboardFilterBranch([])}
+                                            className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            נקה סינון
+                                            <X className="mr-2 h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                                <div className="text-sm text-muted-foreground px-2">
+                                    מציג נתוני {filteredDashboardData.length} עובדים
+                                </div>
+                            </div>
+
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <Card className="glass-card">
                                     <CardHeader>
@@ -2109,7 +2214,115 @@ export default function MovingSouth() {
 
                             <Card className="glass-card">
                                 <CardHeader>
-                                    <CardTitle>עובדים הדורשים שימור (קריטיות × סיכוי לעזיבה)</CardTitle>
+                                    <CardTitle>התפלגות עובדים לפי רמת קריטיות ליחידה</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-80">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={employeesByCriticality}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                <Tooltip
+                                                    content={({ active, payload, label }) => {
+                                                        if (active && payload && payload.length) {
+                                                            return (
+                                                                <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-right">
+                                                                    <p className="font-medium text-foreground">רמת קריטיות: {label}</p>
+                                                                    <p className="text-primary">{payload[0].value} עובדים</p>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }}
+                                                />
+                                                <Bar
+                                                    dataKey="value"
+                                                    fill="hsl(260, 80%, 50%)"
+                                                    radius={[4, 4, 0, 0]}
+                                                    cursor="pointer"
+                                                    onClick={(data) => handleCriticalityClick(data.name)}
+                                                />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* Risk-Criticality Matrix */}
+                            <Card className="glass-card">
+                                <CardHeader>
+                                    <CardTitle>מטריצת קריטיות × סיכוי לעזיבה</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="flex flex-col items-center justify-center p-4 px-12" dir="rtl">
+                                        <div className="flex items-start gap-2">
+                                            {/* Y Axis Scale (Left) */}
+                                            <div className="flex items-center gap-4 h-[240px] md:h-[320px] order-2">
+                                                <div className="h-full w-0.5 bg-primary/40 relative">
+                                                    <ChevronUp className="absolute -top-4 -left-[7px] w-4 h-4 text-primary" />
+                                                </div>
+                                                <div className="flex flex-col h-full text-xs font-medium text-muted-foreground mr-1 w-4 items-center">
+                                                    <div className="h-12 md:h-16 flex items-center justify-center">5</div>
+                                                    <div className="flex-1 flex items-center justify-center">
+                                                        <span className="[writing-mode:vertical-rl] text-sm font-medium text-muted-foreground rotate-180 whitespace-nowrap">מידת קריטיות ליחידה</span>
+                                                    </div>
+                                                    <div className="h-12 md:h-16 flex items-center justify-center">1</div>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-col order-1">
+                                                <div className="flex">
+                                                    {/* Grid Matrix */}
+                                                    <div className="grid grid-cols-5 gap-0 border border-primary/20 rounded-sm shadow-sm overflow-hidden bg-background">
+                                                        {[5, 4, 3, 2, 1].map(criticality =>
+                                                            [1, 2, 3, 4, 5].map(risk => {
+                                                                const count = riskCriticalityGrid[`${criticality}-${risk}`] || 0;
+                                                                const isShaded = criticality % 2 === 0;
+
+                                                                return (
+                                                                    <div
+                                                                        key={`${criticality}-${risk}`}
+                                                                        className={`
+                                                                            w-12 h-12 md:w-16 md:h-16 flex items-center justify-center 
+                                                                            text-sm md:text-base font-semibold border-[0.5px] border-primary/10 
+                                                                            transition-all cursor-pointer hover:bg-primary/10 hover:scale-[1.02] active:scale-95
+                                                                            ${isShaded ? 'bg-primary/[0.08]' : 'bg-transparent'}
+                                                                            ${count > 0 ? 'text-primary' : 'text-muted-foreground/30'}
+                                                                        `}
+                                                                        onClick={() => {
+                                                                            setSelectedMatrixCell({ criticality, risk });
+                                                                            setIsMatrixDialogOpen(true);
+                                                                        }}
+                                                                    >
+                                                                        {count > 0 ? count : ''}
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </div>
+                                                </div>
+
+                                                {/* X Axis Label & Numbers */}
+                                                <div className="mt-4 flex flex-col items-center">
+                                                    <div className="w-[240px] md:w-[320px] h-0.5 bg-primary/40 relative">
+                                                        <ChevronDown className="absolute -top-2 -right-4 w-4 h-4 text-primary -rotate-90" />
+                                                    </div>
+                                                    <div className="relative flex justify-between w-[240px] md:w-[320px] px-2 text-xs font-medium text-muted-foreground mt-2">
+                                                        <span>1</span>
+                                                        <div className="absolute left-1/2 -translate-x-1/2 text-sm font-medium">סיכוי לעזוב</div>
+                                                        <span>5</span>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="glass-card">
+                                <CardHeader>
+                                    <CardTitle>עובדים הדורשים טיפול במעבר דרומה (קריטיות × סיכוי לעזיבה)</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="h-80">
@@ -2180,6 +2393,7 @@ export default function MovingSouth() {
                                     </div>
                                 </CardContent>
                             </Card>
+
                         </TabsContent>
                     </Tabs>
 
@@ -2255,8 +2469,8 @@ export default function MovingSouth() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                                                <TableCell className="text-right">{projects.find(p => p.id === emp.project_id)?.name || '-'}</TableCell>
-                                                <TableCell className="text-right">{branches.find(b => b.id === emp.branch_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right">{emp.projectName}</TableCell>
+                                                <TableCell className="text-right">{emp.branchName}</TableCell>
                                                 <TableCell className="text-right">{getCriticalityLabel(emp.unit_criticality)}</TableCell>
                                             </TableRow>
                                         ))}
@@ -2299,14 +2513,108 @@ export default function MovingSouth() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                                                <TableCell className="text-right">{projects.find(p => p.id === emp.project_id)?.name || '-'}</TableCell>
-                                                <TableCell className="text-right">{branches.find(b => b.id === emp.branch_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right">{emp.projectName}</TableCell>
+                                                <TableCell className="text-right">{emp.branchName}</TableCell>
                                                 <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
                                 </Table>
                             </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={isDashboardCompanyAttritionRiskDialogOpen} onOpenChange={setIsDashboardCompanyAttritionRiskDialogOpen}>
+                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                            <DialogHeader className="text-right">
+                                <DialogTitle className="flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-primary" />
+                                    עובדים לפי סיכוי לעזוב (חברה): {selectedDashboardCompanyAttritionRisk}
+                                </DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="flex-1 overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">שם העובד</TableHead>
+                                            <TableHead className="text-right">תכנית</TableHead>
+                                            <TableHead className="text-right">ענף</TableHead>
+                                            <TableHead className="text-right">קריטיות</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {employeesInSelectedDashboardCompanyAttritionRisk.map((emp) => (
+                                            <TableRow key={emp.id}>
+                                                <TableCell className="text-right">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
+                                                            <Eye className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
+                                                <TableCell className="text-right">{emp.projectName}</TableCell>
+                                                <TableCell className="text-right">{emp.branchName}</TableCell>
+                                                <TableCell className="text-right">{getCriticalityLabel(emp.unit_criticality)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                            <DialogFooter className="p-4 border-t">
+                                <Button onClick={() => setIsDashboardCompanyAttritionRiskDialogOpen(false)}>סגור</Button>
+                            </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={isDashboardCriticalityDialogOpen} onOpenChange={setIsDashboardCriticalityDialogOpen}>
+                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                            <DialogHeader className="text-right">
+                                <DialogTitle className="flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-primary" />
+                                    עובדים לפי רמת קריטיות: {selectedDashboardCriticality}
+                                </DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="flex-1 overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">שם העובד</TableHead>
+                                            <TableHead className="text-right">תכנית</TableHead>
+                                            <TableHead className="text-right">ענף</TableHead>
+                                            <TableHead className="text-right">סיכוי לעזיבה</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {employeesInSelectedDashboardCriticality.map((emp) => (
+                                            <TableRow key={emp.id}>
+                                                <TableCell className="text-right">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
+                                                            <Eye className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
+                                                <TableCell className="text-right">{emp.projectName}</TableCell>
+                                                <TableCell className="text-right">{emp.branchName}</TableCell>
+                                                <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                            <DialogFooter className="p-4 border-t">
+                                <Button onClick={() => setIsDashboardCriticalityDialogOpen(false)}>סגור</Button>
+                            </DialogFooter>
                         </DialogContent>
                     </Dialog>
 
@@ -2343,8 +2651,8 @@ export default function MovingSouth() {
                                                     </div>
                                                 </TableCell>
                                                 <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                                                <TableCell className="text-right">{projects.find(p => p.id === emp.project_id)?.name || '-'}</TableCell>
-                                                <TableCell className="text-right">{branches.find(b => b.id === emp.branch_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right">{emp.projectName}</TableCell>
+                                                <TableCell className="text-right">{emp.branchName}</TableCell>
                                                 <TableCell className="text-right font-bold text-primary">{(emp.unit_criticality ?? 0) * (emp.attrition_risk ?? 0)}</TableCell>
                                             </TableRow>
                                         ))}
@@ -2394,6 +2702,58 @@ export default function MovingSouth() {
                                     </TableBody>
                                 </Table>
                             </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Matrix Dashboard Dialog */}
+                    <Dialog open={isMatrixDialogOpen} onOpenChange={setIsMatrixDialogOpen}>
+                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                            <DialogHeader className="text-right">
+                                <DialogTitle className="flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-primary" />
+                                    עובדים בחתך: קריטיות {selectedMatrixCell?.criticality} × סיכוי לעזיבה {selectedMatrixCell?.risk}
+                                </DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="flex-1 overflow-auto">
+                                <Table dir="rtl">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="text-right">מידת קריטיות ליחידה</TableHead>
+                                            <TableHead className="text-right">סיכוי לעזיבה</TableHead>
+                                            <TableHead className="text-right">ענף</TableHead>
+                                            <TableHead className="text-right">תכנית</TableHead>
+                                            <TableHead className="text-right">שם העובד</TableHead>
+                                            <TableHead className="text-right">פעולות</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {employeesInSelectedMatrixCell.map((emp) => (
+                                            <TableRow key={emp.id}>
+                                                <TableCell className="text-right text-primary">
+                                                    {getCriticalityLabel(emp.unit_criticality)}
+                                                </TableCell>
+                                                <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
+                                                <TableCell className="text-right">{getBranchName(emp.branch_id)}</TableCell>
+                                                <TableCell className="text-right">{getProjectName(emp.project_id)}</TableCell>
+                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                            <DialogFooter className="p-4 border-t">
+                                <Button onClick={() => setIsMatrixDialogOpen(false)}>סגור</Button>
+                            </DialogFooter>
                         </DialogContent>
                     </Dialog>
 
