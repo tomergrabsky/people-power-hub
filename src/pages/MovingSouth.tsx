@@ -154,6 +154,7 @@ export default function MovingSouth() {
     const [movingSouthSearch, setMovingSouthSearch] = useState('');
     const [movingSouthFilterProject, setMovingSouthFilterProject] = useState<string[]>([]);
     const [movingSouthFilterBranch, setMovingSouthFilterBranch] = useState<string[]>([]);
+    const [movingSouthFilterCompany, setMovingSouthFilterCompany] = useState<string[]>([]);
     const [movingSouthFilterCriticality, setMovingSouthFilterCriticality] = useState('all');
     const [movingSouthFilterAttritionRisk, setMovingSouthFilterAttritionRisk] = useState('all');
     const [movingSouthFilterReplacement, setMovingSouthFilterReplacement] = useState('all');
@@ -242,6 +243,7 @@ export default function MovingSouth() {
         { id: 'full_name', label: 'שם העובד', sortable: true },
         { id: 'branchName', label: 'ענף', sortable: true },
         { id: 'projectName', label: 'תכנית', sortable: true },
+        { id: 'companyName', label: 'חברה מעסיקה', sortable: true },
         { id: 'city', label: 'עיר', sortable: true },
         { id: 'leavingReasonName', label: 'סיבת רצון לעזוב (מפקדים)', sortable: true },
         { id: 'attrition_risk_reason', label: 'סיבת רצון לעזוב (מפקדים)', sortable: true },
@@ -364,6 +366,7 @@ export default function MovingSouth() {
                 roleName: jobRoles.find((r) => r.id === emp.job_role_id)?.name || 'לא מוגדר',
                 branchName: branches.find((b) => b.id === emp.branch_id)?.name || 'לא מוגדר',
                 projectName: projects.find((p) => p.id === emp.project_id)?.name || 'לא משויך',
+                companyName: employingCompanies.find((c) => c.id === emp.employing_company_id)?.name || 'לא מוגדר',
                 leavingReasonName: leavingReasons.find((r) => r.id === emp.leaving_reason_id)?.name || 'לא מוגדר',
                 attentionScore: (emp.unit_criticality ?? 0) * (emp.attrition_risk ?? 0),
             }));
@@ -374,6 +377,7 @@ export default function MovingSouth() {
                 emp.full_name.toLowerCase().includes(search) ||
                 emp.projectName.toLowerCase().includes(search) ||
                 emp.branchName.toLowerCase().includes(search) ||
+                emp.companyName.toLowerCase().includes(search) ||
                 emp.city?.toLowerCase().includes(search) ||
                 emp.leavingReasonName.toLowerCase().includes(search)
             );
@@ -389,6 +393,12 @@ export default function MovingSouth() {
             data = data.filter(emp => {
                 const branchId = emp.branch_id || 'none';
                 return movingSouthFilterBranch.includes(branchId);
+            });
+        }
+        if (movingSouthFilterCompany.length > 0) {
+            data = data.filter(emp => {
+                const companyId = emp.employing_company_id || 'none';
+                return movingSouthFilterCompany.includes(companyId);
             });
         }
         if (movingSouthFilterCriticality !== 'all') {
@@ -421,7 +431,7 @@ export default function MovingSouth() {
         }
 
         return data;
-    }, [allEmployees, jobRoles, branches, projects, leavingReasons, movingSouthSearch, movingSouthSortConfig, movingSouthFilterProject, movingSouthFilterBranch, movingSouthFilterCriticality, movingSouthFilterAttritionRisk, movingSouthFilterReplacement]);
+    }, [allEmployees, jobRoles, branches, projects, employingCompanies, leavingReasons, movingSouthSearch, movingSouthSortConfig, movingSouthFilterProject, movingSouthFilterBranch, movingSouthFilterCompany, movingSouthFilterCriticality, movingSouthFilterAttritionRisk, movingSouthFilterReplacement]);
 
     // Dashboard Data Calculations
     const employeesByAttritionRisk = useMemo(() => {
@@ -1890,6 +1900,17 @@ export default function MovingSouth() {
                                                 ]}
                                                 selected={movingSouthFilterBranch}
                                                 onChange={setMovingSouthFilterBranch}
+                                            />
+                                        </div>
+                                        <div className="w-[200px]">
+                                            <MultiSelect
+                                                placeholder="פילטר חברה"
+                                                options={[
+                                                    ...employingCompanies.map(c => ({ label: c.name, value: c.id })),
+                                                    { label: 'לא מוגדר', value: 'none' }
+                                                ]}
+                                                selected={movingSouthFilterCompany}
+                                                onChange={setMovingSouthFilterCompany}
                                             />
                                         </div>
                                         <Select value={movingSouthFilterCriticality} onValueChange={setMovingSouthFilterCriticality}>
