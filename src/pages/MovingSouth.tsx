@@ -174,6 +174,8 @@ export default function MovingSouth() {
     const [isDashboardLeavingReasonDialogOpen, setIsDashboardLeavingReasonDialogOpen] = useState(false);
     const [selectedDashboardAttentionScore, setSelectedDashboardAttentionScore] = useState<string | null>(null);
     const [isDashboardAttentionScoreDialogOpen, setIsDashboardAttentionScoreDialogOpen] = useState(false);
+    const [selectedDashboardCompanyAttritionRisk, setSelectedDashboardCompanyAttritionRisk] = useState<string | null>(null);
+    const [isDashboardCompanyAttritionRiskDialogOpen, setIsDashboardCompanyAttritionRiskDialogOpen] = useState(false);
 
     const { isSuperAdmin } = useAuth();
 
@@ -455,6 +457,27 @@ export default function MovingSouth() {
         ].filter((item) => item.value > 0);
     }, [movingSouthTableData]);
 
+    const employeesByCompanyAttritionRisk = useMemo(() => {
+        const counts: Record<string, number> = {};
+        for (let i = 0; i <= 5; i++) {
+            counts[i.toString()] = 0;
+        }
+        counts['לא מוגדר'] = 0;
+
+        movingSouthTableData.forEach((emp) => {
+            if (emp.company_attrition_risk !== null && emp.company_attrition_risk !== undefined) {
+                counts[emp.company_attrition_risk.toString()] = (counts[emp.company_attrition_risk.toString()] || 0) + 1;
+            } else {
+                counts['לא מוגדר']++;
+            }
+        });
+
+        return [
+            ...Array.from({ length: 6 }, (_, i) => ({ name: attritionRiskLabels[i.toString()] || i.toString(), value: counts[i.toString()] })),
+            { name: 'לא מוגדר', value: counts['לא מוגדר'] },
+        ].filter((item) => item.value > 0);
+    }, [movingSouthTableData]);
+
     const employeesByLeavingReason = useMemo(() => {
         const counts: Record<string, number> = {};
         movingSouthTableData.forEach((emp) => {
@@ -518,6 +541,16 @@ export default function MovingSouth() {
         }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
     }, [movingSouthTableData, selectedDashboardAttentionScore]);
 
+    const employeesInSelectedDashboardCompanyAttritionRisk = useMemo(() => {
+        if (!selectedDashboardCompanyAttritionRisk) return [];
+        return movingSouthTableData.filter(emp => {
+            if (selectedDashboardCompanyAttritionRisk === 'לא מוגדר') {
+                return emp.company_attrition_risk === null || emp.company_attrition_risk === undefined;
+            }
+            return getAttritionRiskLabel(emp.company_attrition_risk) === selectedDashboardCompanyAttritionRisk;
+        }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
+    }, [movingSouthTableData, selectedDashboardCompanyAttritionRisk]);
+
     const handleAttritionRiskClick = (riskLabel: string) => {
         setSelectedDashboardAttritionRisk(riskLabel);
         setIsDashboardAttritionRiskDialogOpen(true);
@@ -531,6 +564,11 @@ export default function MovingSouth() {
     const handleAttentionScoreClick = (score: string) => {
         setSelectedDashboardAttentionScore(score);
         setIsDashboardAttentionScoreDialogOpen(true);
+    };
+
+    const handleCompanyAttritionRiskClick = (riskLabel: string) => {
+        setSelectedDashboardCompanyAttritionRisk(riskLabel);
+        setIsDashboardCompanyAttritionRiskDialogOpen(true);
     };
 
     const toggleSort = (key: string) => {
@@ -1871,7 +1909,7 @@ export default function MovingSouth() {
                             <div className="flex flex-col gap-4">
                                 <div className="flex flex-col md:flex-row gap-4">
                                     <div className="relative flex-1">
-                                        <Search className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                                         <Input
                                             placeholder="חיפוש חופשי..."
                                             className="pr-10"
@@ -2031,12 +2069,12 @@ export default function MovingSouth() {
 
                                 <Card className="glass-card">
                                     <CardHeader>
-                                        <CardTitle>התפלגות עובדים לפי סיבת רצון לעזוב - קטגוריות</CardTitle>
+                                        <CardTitle>סיכוי לעזוב - לדעת החברה</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="h-80">
                                             <ResponsiveContainer width="100%" height="100%">
-                                                <BarChart data={employeesByLeavingReason}>
+                                                <BarChart data={employeesByCompanyAttritionRisk}>
                                                     <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
                                                     <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
                                                     <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
@@ -2045,7 +2083,7 @@ export default function MovingSouth() {
                                                             if (active && payload && payload.length) {
                                                                 return (
                                                                     <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-right">
-                                                                        <p className="font-medium text-foreground">{label}</p>
+                                                                        <p className="font-medium text-foreground">רמת סיכוי: {label}</p>
                                                                         <p className="text-primary">{payload[0].value} עובדים</p>
                                                                     </div>
                                                                 );
@@ -2055,10 +2093,10 @@ export default function MovingSouth() {
                                                     />
                                                     <Bar
                                                         dataKey="value"
-                                                        fill="hsl(330, 70%, 50%)"
+                                                        fill="hsl(200, 80%, 50%)"
                                                         radius={[4, 4, 0, 0]}
                                                         cursor="pointer"
-                                                        onClick={(data) => handleLeavingReasonClick(data.name)}
+                                                        onClick={(data) => handleCompanyAttritionRiskClick(data.name)}
                                                     />
                                                 </BarChart>
                                             </ResponsiveContainer>
@@ -2097,6 +2135,43 @@ export default function MovingSouth() {
                                                     radius={[4, 4, 0, 0]}
                                                     cursor="pointer"
                                                     onClick={(data) => handleAttentionScoreClick(data.name)}
+                                                />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="glass-card">
+                                <CardHeader>
+                                    <CardTitle>התפלגות עובדים לפי סיבת רצון לעזוב - קטגוריות</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-80">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={employeesByLeavingReason}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                <Tooltip
+                                                    content={({ active, payload, label }) => {
+                                                        if (active && payload && payload.length) {
+                                                            return (
+                                                                <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-right">
+                                                                    <p className="font-medium text-foreground">{label}</p>
+                                                                    <p className="text-primary">{payload[0].value} עובדים</p>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }}
+                                                />
+                                                <Bar
+                                                    dataKey="value"
+                                                    fill="hsl(330, 70%, 50%)"
+                                                    radius={[4, 4, 0, 0]}
+                                                    cursor="pointer"
+                                                    onClick={(data) => handleLeavingReasonClick(data.name)}
                                                 />
                                             </BarChart>
                                         </ResponsiveContainer>
@@ -2269,6 +2344,49 @@ export default function MovingSouth() {
                                                 <TableCell className="text-right">{projects.find(p => p.id === emp.project_id)?.name || '-'}</TableCell>
                                                 <TableCell className="text-right">{branches.find(b => b.id === emp.branch_id)?.name || '-'}</TableCell>
                                                 <TableCell className="text-right font-bold text-primary">{(emp.unit_criticality ?? 0) * (emp.attrition_risk ?? 0)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
+                    <Dialog open={isDashboardCompanyAttritionRiskDialogOpen} onOpenChange={setIsDashboardCompanyAttritionRiskDialogOpen}>
+                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                            <DialogHeader className="text-right">
+                                <DialogTitle className="flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-primary" />
+                                    עובדים לפי סיכוי לעזוב (חברה): {selectedDashboardCompanyAttritionRisk}
+                                </DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="flex-1 overflow-auto">
+                                <Table dir="rtl">
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">שם העובד</TableHead>
+                                            <TableHead className="text-right">תכנית</TableHead>
+                                            <TableHead className="text-right">ענף</TableHead>
+                                            <TableHead className="text-right">סיכוי (חברה)</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {employeesInSelectedDashboardCompanyAttritionRisk.map((emp) => (
+                                            <TableRow key={emp.id}>
+                                                <TableCell className="text-right">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
+                                                            <Eye className="h-4 w-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
+                                                <TableCell className="text-right">{projects.find(p => p.id === emp.project_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right">{branches.find(b => b.id === emp.branch_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right">{getAttritionRiskLabel(emp.company_attrition_risk)}</TableCell>
                                             </TableRow>
                                         ))}
                                     </TableBody>
