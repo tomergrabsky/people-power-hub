@@ -2032,7 +2032,7 @@ export default function MovingSouth() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <Card className="glass-card">
                                     <CardHeader>
-                                        <CardTitle>התפלגות עובדים לפי סיכוי לעזיבה</CardTitle>
+                                        <CardTitle>סיכוי לעזוב - לדעת היחידה</CardTitle>
                                     </CardHeader>
                                     <CardContent>
                                         <div className="h-80">
@@ -2225,7 +2225,7 @@ export default function MovingSouth() {
                             <DialogHeader className="text-right">
                                 <DialogTitle className="flex items-center gap-2">
                                     <Users className="w-5 h-5 text-primary" />
-                                    עובדים ברמת סיכוי לעזיבה: {selectedDashboardAttritionRisk}
+                                    עובדים לפי סיכוי לעזוב (יחידה): {selectedDashboardAttritionRisk}
                                 </DialogTitle>
                             </DialogHeader>
                             <ScrollArea className="flex-1 overflow-auto">
