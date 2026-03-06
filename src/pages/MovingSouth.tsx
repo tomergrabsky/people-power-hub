@@ -46,6 +46,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Loader2, Filter, X, Users, Eye, Edit, Download, Search, ArrowUpDown, ChevronUp, ChevronDown, Settings2, RotateCcw, Move, Building2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { MultiSelect } from '@/components/ui/multi-select';
 import { useFormFieldOrder } from '@/hooks/useFormFieldOrder';
 import { DraggableFormContainer } from '@/components/employees/DraggableFormContainer';
 import {
@@ -151,8 +152,8 @@ export default function MovingSouth() {
 
     // Moving South Table states
     const [movingSouthSearch, setMovingSouthSearch] = useState('');
-    const [movingSouthFilterProject, setMovingSouthFilterProject] = useState('all');
-    const [movingSouthFilterBranch, setMovingSouthFilterBranch] = useState('all');
+    const [movingSouthFilterProject, setMovingSouthFilterProject] = useState<string[]>([]);
+    const [movingSouthFilterBranch, setMovingSouthFilterBranch] = useState<string[]>([]);
     const [movingSouthFilterCriticality, setMovingSouthFilterCriticality] = useState('all');
     const [movingSouthFilterAttritionRisk, setMovingSouthFilterAttritionRisk] = useState('all');
     const [movingSouthFilterReplacement, setMovingSouthFilterReplacement] = useState('all');
@@ -164,6 +165,14 @@ export default function MovingSouth() {
     const [isDragMode, setIsDragMode] = useState(false);
     const [activeTab, setActiveTab] = useState('general');
     const [pageTab, setPageTab] = useState('table');
+
+    // Dashboard Selection States
+    const [selectedDashboardAttritionRisk, setSelectedDashboardAttritionRisk] = useState<string | null>(null);
+    const [isDashboardAttritionRiskDialogOpen, setIsDashboardAttritionRiskDialogOpen] = useState(false);
+    const [selectedDashboardLeavingReason, setSelectedDashboardLeavingReason] = useState<string | null>(null);
+    const [isDashboardLeavingReasonDialogOpen, setIsDashboardLeavingReasonDialogOpen] = useState(false);
+    const [selectedDashboardAttentionScore, setSelectedDashboardAttentionScore] = useState<string | null>(null);
+    const [isDashboardAttentionScoreDialogOpen, setIsDashboardAttentionScoreDialogOpen] = useState(false);
 
     const { isSuperAdmin } = useAuth();
 
@@ -370,11 +379,17 @@ export default function MovingSouth() {
             );
         }
 
-        if (movingSouthFilterProject !== 'all') {
-            data = data.filter(emp => emp.project_id === movingSouthFilterProject);
+        if (movingSouthFilterProject.length > 0) {
+            data = data.filter(emp => {
+                const projId = emp.project_id || 'none';
+                return movingSouthFilterProject.includes(projId);
+            });
         }
-        if (movingSouthFilterBranch !== 'all') {
-            data = data.filter(emp => emp.branch_id === movingSouthFilterBranch);
+        if (movingSouthFilterBranch.length > 0) {
+            data = data.filter(emp => {
+                const branchId = emp.branch_id || 'none';
+                return movingSouthFilterBranch.includes(branchId);
+            });
         }
         if (movingSouthFilterCriticality !== 'all') {
             data = data.filter(emp => emp.unit_criticality?.toString() === movingSouthFilterCriticality);
@@ -463,6 +478,50 @@ export default function MovingSouth() {
             .filter((item) => item.value > 0)
             .sort((a, b) => parseInt(b.name) - parseInt(a.name));
     }, [movingSouthTableData]);
+
+    // Dashboard Drill-down Memoized Lists
+    const employeesInSelectedDashboardAttritionRisk = useMemo(() => {
+        if (!selectedDashboardAttritionRisk) return [];
+        return movingSouthTableData.filter(emp => {
+            if (selectedDashboardAttritionRisk === 'לא מוגדר') {
+                return emp.attrition_risk === null || emp.attrition_risk === undefined;
+            }
+            return getAttritionRiskLabel(emp.attrition_risk) === selectedDashboardAttritionRisk;
+        }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
+    }, [movingSouthTableData, selectedDashboardAttritionRisk]);
+
+    const employeesInSelectedDashboardLeavingReason = useMemo(() => {
+        if (!selectedDashboardLeavingReason) return [];
+        return movingSouthTableData.filter(emp => {
+            const reasonName = leavingReasons.find((r) => r.id === emp.leaving_reason_id)?.name || 'לא מוגדר';
+            return reasonName === selectedDashboardLeavingReason;
+        }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
+    }, [movingSouthTableData, selectedDashboardLeavingReason, leavingReasons]);
+
+    const employeesInSelectedDashboardAttentionScore = useMemo(() => {
+        if (!selectedDashboardAttentionScore) return [];
+        const targetScore = parseInt(selectedDashboardAttentionScore);
+        return movingSouthTableData.filter(emp => {
+            const criticality = emp.unit_criticality ?? 0;
+            const attritionRisk = emp.attrition_risk ?? 0;
+            return criticality * attritionRisk === targetScore;
+        }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
+    }, [movingSouthTableData, selectedDashboardAttentionScore]);
+
+    const handleAttritionRiskClick = (riskLabel: string) => {
+        setSelectedDashboardAttritionRisk(riskLabel);
+        setIsDashboardAttritionRiskDialogOpen(true);
+    };
+
+    const handleLeavingReasonClick = (reasonName: string) => {
+        setSelectedDashboardLeavingReason(reasonName);
+        setIsDashboardLeavingReasonDialogOpen(true);
+    };
+
+    const handleAttentionScoreClick = (score: string) => {
+        setSelectedDashboardAttentionScore(score);
+        setIsDashboardAttentionScoreDialogOpen(true);
+    };
 
     const toggleSort = (key: string) => {
         setMovingSouthSortConfig(prev => {
@@ -1811,20 +1870,28 @@ export default function MovingSouth() {
                                         />
                                     </div>
                                     <div className="flex flex-wrap gap-2">
-                                        <Select value={movingSouthFilterProject} onValueChange={setMovingSouthFilterProject}>
-                                            <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר תכנית" /></SelectTrigger>
-                                            <SelectContent className="text-right">
-                                                <SelectItem value="all" className="text-right">כל התכניות</SelectItem>
-                                                {projects.map(p => (<SelectItem key={p.id} value={p.id} className="text-right">{p.name}</SelectItem>))}
-                                            </SelectContent>
-                                        </Select>
-                                        <Select value={movingSouthFilterBranch} onValueChange={setMovingSouthFilterBranch}>
-                                            <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר ענף" /></SelectTrigger>
-                                            <SelectContent className="text-right">
-                                                <SelectItem value="all" className="text-right">כל הענפים</SelectItem>
-                                                {branches.map(b => (<SelectItem key={b.id} value={b.id} className="text-right">{b.name}</SelectItem>))}
-                                            </SelectContent>
-                                        </Select>
+                                        <div className="w-[200px]">
+                                            <MultiSelect
+                                                placeholder="פילטר תכנית"
+                                                options={[
+                                                    ...projects.map(p => ({ label: p.name, value: p.id })),
+                                                    { label: 'ללא משויך', value: 'none' }
+                                                ]}
+                                                selected={movingSouthFilterProject}
+                                                onChange={setMovingSouthFilterProject}
+                                            />
+                                        </div>
+                                        <div className="w-[200px]">
+                                            <MultiSelect
+                                                placeholder="פילטר ענף"
+                                                options={[
+                                                    ...branches.map(b => ({ label: b.name, value: b.id })),
+                                                    { label: 'לא מוגדר', value: 'none' }
+                                                ]}
+                                                selected={movingSouthFilterBranch}
+                                                onChange={setMovingSouthFilterBranch}
+                                            />
+                                        </div>
                                         <Select value={movingSouthFilterCriticality} onValueChange={setMovingSouthFilterCriticality}>
                                             <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר קריטיות" /></SelectTrigger>
                                             <SelectContent className="text-right">
@@ -1932,6 +1999,8 @@ export default function MovingSouth() {
                                                         dataKey="value"
                                                         fill="hsl(var(--destructive))"
                                                         radius={[4, 4, 0, 0]}
+                                                        cursor="pointer"
+                                                        onClick={(data) => handleAttritionRiskClick(data.name)}
                                                     />
                                                 </BarChart>
                                             </ResponsiveContainer>
@@ -1967,6 +2036,8 @@ export default function MovingSouth() {
                                                         dataKey="value"
                                                         fill="hsl(330, 70%, 50%)"
                                                         radius={[4, 4, 0, 0]}
+                                                        cursor="pointer"
+                                                        onClick={(data) => handleLeavingReasonClick(data.name)}
                                                     />
                                                 </BarChart>
                                             </ResponsiveContainer>
@@ -2003,6 +2074,8 @@ export default function MovingSouth() {
                                                     dataKey="value"
                                                     fill="hsl(38, 92%, 50%)"
                                                     radius={[4, 4, 0, 0]}
+                                                    cursor="pointer"
+                                                    onClick={(data) => handleAttentionScoreClick(data.name)}
                                                 />
                                             </BarChart>
                                         </ResponsiveContainer>
@@ -2047,6 +2120,139 @@ export default function MovingSouth() {
                                     שמור שינויים
                                 </Button>
                             </DialogFooter>
+                        </DialogContent>
+                    </Dialog>
+
+                    {/* Dashboard Detail Dialogs */}
+                    <Dialog open={isDashboardAttritionRiskDialogOpen} onOpenChange={setIsDashboardAttritionRiskDialogOpen}>
+                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                            <DialogHeader className="text-right">
+                                <DialogTitle className="flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-primary" />
+                                    עובדים ברמת סיכוי לעזיבה: {selectedDashboardAttritionRisk}
+                                </DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="flex-1 overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">שם העובד</TableHead>
+                                            <TableHead className="text-right">תכנית</TableHead>
+                                            <TableHead className="text-right">ענף</TableHead>
+                                            <TableHead className="text-right">קריטיות</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {employeesInSelectedDashboardAttritionRisk.map((emp) => (
+                                            <TableRow key={emp.id}>
+                                                <TableCell className="text-right">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
+                                                            <Eye className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
+                                                <TableCell className="text-right">{projects.find(p => p.id === emp.project_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right">{branches.find(b => b.id === emp.branch_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right">{getCriticalityLabel(emp.unit_criticality)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={isDashboardLeavingReasonDialogOpen} onOpenChange={setIsDashboardLeavingReasonDialogOpen}>
+                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                            <DialogHeader className="text-right">
+                                <DialogTitle className="flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-primary" />
+                                    עובדים לפי סיבת עזיבה: {selectedDashboardLeavingReason}
+                                </DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="flex-1 overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">שם העובד</TableHead>
+                                            <TableHead className="text-right">תכנית</TableHead>
+                                            <TableHead className="text-right">ענף</TableHead>
+                                            <TableHead className="text-right">סיכוי לעזיבה</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {employeesInSelectedDashboardLeavingReason.map((emp) => (
+                                            <TableRow key={emp.id}>
+                                                <TableCell className="text-right">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
+                                                            <Eye className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
+                                                <TableCell className="text-right">{projects.find(p => p.id === emp.project_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right">{branches.find(b => b.id === emp.branch_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog open={isDashboardAttentionScoreDialogOpen} onOpenChange={setIsDashboardAttentionScoreDialogOpen}>
+                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                            <DialogHeader className="text-right">
+                                <DialogTitle className="flex items-center gap-2">
+                                    <Users className="w-5 h-5 text-primary" />
+                                    עובדים לפי ציון דחיפות: {selectedDashboardAttentionScore}
+                                </DialogTitle>
+                            </DialogHeader>
+                            <ScrollArea className="flex-1 overflow-auto">
+                                <Table>
+                                    <TableHeader>
+                                        <TableRow>
+                                            <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">שם העובד</TableHead>
+                                            <TableHead className="text-right">תכנית</TableHead>
+                                            <TableHead className="text-right">ענף</TableHead>
+                                            <TableHead className="text-right">קריטיות × סיכון</TableHead>
+                                        </TableRow>
+                                    </TableHeader>
+                                    <TableBody>
+                                        {employeesInSelectedDashboardAttentionScore.map((emp) => (
+                                            <TableRow key={emp.id}>
+                                                <TableCell className="text-right">
+                                                    <div className="flex gap-2 justify-end">
+                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
+                                                            <Eye className="w-4 h-4" />
+                                                        </Button>
+                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
+                                                            <Edit className="w-4 h-4" />
+                                                        </Button>
+                                                    </div>
+                                                </TableCell>
+                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
+                                                <TableCell className="text-right">{projects.find(p => p.id === emp.project_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right">{branches.find(b => b.id === emp.branch_id)?.name || '-'}</TableCell>
+                                                <TableCell className="text-right font-bold text-primary">{(emp.unit_criticality ?? 0) * (emp.attrition_risk ?? 0)}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </ScrollArea>
                         </DialogContent>
                     </Dialog>
 

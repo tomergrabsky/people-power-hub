@@ -38,8 +38,9 @@ import {
   TabsList,
   TabsTrigger,
 } from '@/components/ui/tabs';
-import { Loader2, Users, Eye, Filter, X } from 'lucide-react';
+import { Loader2, Users, Eye, Filter, X, Building2, Briefcase } from 'lucide-react';
 import { toast } from 'sonner';
+import { MultiSelect } from '@/components/ui/multi-select';
 import {
   PieChart,
   Pie,
@@ -148,7 +149,8 @@ export default function Analytics() {
   const [performanceLevels, setPerformanceLevels] = useState<NamedEntity[]>([]);
 
   // Filter states
-  const [filterProject, setFilterProject] = useState<string>('all');
+  const [filterProject, setFilterProject] = useState<string[]>([]);
+  const [filterBranch, setFilterBranch] = useState<string[]>([]);
   const [filterStartDate, setFilterStartDate] = useState<string>('');
   const [filterEndDate, setFilterEndDate] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
@@ -260,9 +262,21 @@ export default function Analytics() {
   const filteredEmployees = useMemo(() => {
     return allEmployees.filter((emp) => {
       // Filter by project
-      if (filterProject !== 'all' && emp.project_id !== filterProject) {
+      if (filterProject.length > 0 && emp.project_id && !filterProject.includes(emp.project_id)) {
         return false;
       }
+      if (filterProject.length > 0 && !emp.project_id && !filterProject.includes('none')) {
+        return false;
+      }
+
+      // Filter by branch
+      if (filterBranch.length > 0 && emp.branch_id && !filterBranch.includes(emp.branch_id)) {
+        return false;
+      }
+      if (filterBranch.length > 0 && !emp.branch_id && !filterBranch.includes('none')) {
+        return false;
+      }
+
       // Filter by start date range
       if (filterStartDate && emp.start_date < filterStartDate) {
         return false;
@@ -272,7 +286,7 @@ export default function Analytics() {
       }
       return true;
     });
-  }, [allEmployees, filterProject, filterStartDate, filterEndDate]);
+  }, [allEmployees, filterProject, filterBranch, filterStartDate, filterEndDate]);
 
   // Calculate chart data based on filtered employees
   const employeesByProject = useMemo(() => {
@@ -922,13 +936,15 @@ export default function Analytics() {
   };
 
   const clearFilters = () => {
-    setFilterProject('all');
+    setFilterProject([]);
+    setFilterBranch([]);
     setFilterStartDate('');
     setFilterEndDate('');
   };
 
   const activeFiltersCount = [
-    filterProject !== 'all',
+    filterProject.length > 0,
+    filterBranch.length > 0,
     filterStartDate !== '',
     filterEndDate !== '',
   ].filter(Boolean).length;
@@ -1022,18 +1038,36 @@ export default function Analytics() {
           <Card className="p-4 bg-secondary/50">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <div className="space-y-2">
-                <Label>תכנית</Label>
-                <Select value={filterProject} onValueChange={setFilterProject}>
-                  <SelectTrigger className="bg-background">
-                    <SelectValue placeholder="כל התכניות" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-popover z-50">
-                    <SelectItem value="all">כל התכניות</SelectItem>
-                    {projects.map((p) => (
-                      <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Label className="flex items-center gap-2">
+                  <Briefcase className="w-3.5 h-3.5" />
+                  תכנית
+                </Label>
+                <MultiSelect
+                  placeholder="כל התכניות"
+                  options={[
+                    ...projects.map(p => ({ label: p.name, value: p.id })),
+                    { label: 'ללא משויך', value: 'none' }
+                  ]}
+                  selected={filterProject}
+                  onChange={setFilterProject}
+                  className="bg-background"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Building2 className="w-3.5 h-3.5" />
+                  ענף
+                </Label>
+                <MultiSelect
+                  placeholder="כל הענפים"
+                  options={[
+                    ...branches.map(b => ({ label: b.name, value: b.id })),
+                    { label: 'לא מוגדר', value: 'none' }
+                  ]}
+                  selected={filterBranch}
+                  onChange={setFilterBranch}
+                  className="bg-background"
+                />
               </div>
               <div className="space-y-2">
                 <Label>מתאריך התחלה</Label>
