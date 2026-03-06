@@ -1907,18 +1907,20 @@ export default function MovingSouth() {
 
                         <TabsContent value="table" className="space-y-6 mt-6">
                             <div className="flex flex-col gap-4">
-                                <div className="flex flex-col md:flex-row gap-4">
-                                    <div className="relative flex-1">
-                                        <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                                <div className="flex flex-col md:flex-row items-end md:items-center gap-4">
+                                    <div className="relative w-full md:w-80">
+                                        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                                            <Search className="h-4 w-4 text-muted-foreground" />
+                                        </div>
                                         <Input
                                             placeholder="חיפוש חופשי..."
-                                            className="pr-10"
+                                            className="pr-10 text-right"
                                             value={movingSouthSearch}
                                             onChange={(e) => setMovingSouthSearch(e.target.value)}
                                         />
                                     </div>
-                                    <div className="flex flex-wrap gap-2">
-                                        <div className="w-[200px]">
+                                    <div className="flex flex-wrap gap-2 flex-1 justify-end">
+                                        <div className="w-[180px]">
                                             <MultiSelect
                                                 placeholder="פילטר תכנית"
                                                 options={[
@@ -1929,7 +1931,7 @@ export default function MovingSouth() {
                                                 onChange={setMovingSouthFilterProject}
                                             />
                                         </div>
-                                        <div className="w-[200px]">
+                                        <div className="w-[180px]">
                                             <MultiSelect
                                                 placeholder="פילטר ענף"
                                                 options={[
@@ -1940,7 +1942,7 @@ export default function MovingSouth() {
                                                 onChange={setMovingSouthFilterBranch}
                                             />
                                         </div>
-                                        <div className="w-[200px]">
+                                        <div className="w-[180px]">
                                             <MultiSelect
                                                 placeholder="פילטר חברה"
                                                 options={[
@@ -1952,21 +1954,21 @@ export default function MovingSouth() {
                                             />
                                         </div>
                                         <Select value={movingSouthFilterCriticality} onValueChange={setMovingSouthFilterCriticality}>
-                                            <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר קריטיות" /></SelectTrigger>
+                                            <SelectTrigger className="w-[150px] text-right"><SelectValue placeholder="פילטר קריטיות" /></SelectTrigger>
                                             <SelectContent className="text-right">
                                                 <SelectItem value="all" className="text-right">כל רמות הקריטיות</SelectItem>
                                                 {Object.entries(criticalityLabels).map(([val, label]) => (<SelectItem key={val} value={val} className="text-right">{label}</SelectItem>))}
                                             </SelectContent>
                                         </Select>
                                         <Select value={movingSouthFilterAttritionRisk} onValueChange={setMovingSouthFilterAttritionRisk}>
-                                            <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר סיכוי לעזיבה" /></SelectTrigger>
+                                            <SelectTrigger className="w-[160px] text-right"><SelectValue placeholder="פילטר סיכוי לעזיבה" /></SelectTrigger>
                                             <SelectContent className="text-right">
                                                 <SelectItem value="all" className="text-right">כל רמות הסיכוי</SelectItem>
                                                 {Object.entries(attritionRiskLabels).map(([val, label]) => (<SelectItem key={val} value={val} className="text-right">{label}</SelectItem>))}
                                             </SelectContent>
                                         </Select>
                                         <Select value={movingSouthFilterReplacement} onValueChange={setMovingSouthFilterReplacement}>
-                                            <SelectTrigger className="w-[180px] text-right"><SelectValue placeholder="פילטר לגייס במקומו" /></SelectTrigger>
+                                            <SelectTrigger className="w-[160px] text-right"><SelectValue placeholder="פילטר לגייס במקומו" /></SelectTrigger>
                                             <SelectContent className="text-right">
                                                 <SelectItem value="all" className="text-right">הכל (גיוס חליפי)</SelectItem>
                                                 <SelectItem value="כן" className="text-right">כן</SelectItem>
