@@ -804,9 +804,10 @@ export default function Analytics() {
         ...emp,
         roleName: roles.find((r) => r.id === emp.job_role_id)?.name || 'לא מוגדר',
         seniorityName: seniorityLevels.find((s) => s.id === emp.seniority_level_id)?.name || 'לא מוגדר',
+        branchName: branches.find((b) => b.id === emp.branch_id)?.name || 'לא מוגדר',
       }))
       .sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
-  }, [filteredEmployees, selectedCompany, companies, roles, seniorityLevels]);
+  }, [filteredEmployees, selectedCompany, companies, roles, seniorityLevels, branches]);
 
   const handleCompanyClick = (companyName: string) => {
     setSelectedCompany(companyName);
@@ -2051,7 +2052,7 @@ export default function Analytics() {
 
       {/* Company Employees Dialog */}
       <Dialog open={isCompanyDialogOpen} onOpenChange={setIsCompanyDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-4xl">
           <DialogHeader className="text-right">
             <DialogTitle className="flex items-center gap-2">
               <Users className="w-5 h-5 text-primary" />
@@ -2068,6 +2069,9 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">סיכון עזיבה</TableHead>
+                    <TableHead className="text-right">קריטיות ליחידה</TableHead>
+                    <TableHead className="text-right">ענף</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
                     <TableHead className="text-right">תפקיד</TableHead>
                     <TableHead className="text-right">שם העובד</TableHead>
@@ -2086,6 +2090,9 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
+                      <TableCell className="text-right">{getCriticalityLabel(emp.unit_criticality)}</TableCell>
+                      <TableCell className="text-right">{emp.branchName}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
                       <TableCell className="text-right">{emp.roleName}</TableCell>
                       <TableCell className="font-medium text-right">{emp.full_name}</TableCell>
