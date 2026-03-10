@@ -38,7 +38,7 @@ interface Employee {
 }
 
 const LeftEmployees = () => {
-    const { user, isManager, isSuperAdmin } = useAuth();
+    const { user, isManager, isSuperAdmin, allowedProjectIds } = useAuth();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [jobRoles, setJobRoles] = useState<any[]>([]);
     const [leavingReasons, setLeavingReasons] = useState<any[]>([]);
@@ -73,8 +73,16 @@ const LeftEmployees = () => {
 
             setJobRoles(mapDocs(rolesSnap));
             setLeavingReasons(mapDocs(reasonsSnap));
-            // Only keep employees that left
-            setEmployees(mapDocs(employeesSnap).filter((emp: any) => emp.is_left));
+            let allEmp = mapDocs(employeesSnap).filter((emp: any) => emp.is_left);
+
+            // Filter by project permissions if not super admin
+            if (!isSuperAdmin) {
+                allEmp = allEmp.filter((emp: any) =>
+                    emp.project_id && allowedProjectIds?.includes(emp.project_id)
+                );
+            }
+
+            setEmployees(allEmp);
         } catch (e) {
             console.error(e);
             toast.error('שגיאה בטעינת הנתונים');

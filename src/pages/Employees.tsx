@@ -152,7 +152,7 @@ interface PerformanceLevel {
 }
 
 export default function Employees() {
-  const { isManager, isSuperAdmin } = useAuth();
+  const { isManager, isSuperAdmin, allowedProjectIds } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -162,6 +162,10 @@ export default function Employees() {
   const [leavingReasons, setLeavingReasons] = useState<LeavingReason[]>([]);
   const [performanceLevels, setPerformanceLevels] = useState<PerformanceLevel[]>([]);
   const [loading, setLoading] = useState(true);
+  const allowedProjects = useMemo(() => {
+    if (isSuperAdmin) return projects;
+    return projects.filter(p => allowedProjectIds?.includes(p.id));
+  }, [projects, isSuperAdmin, allowedProjectIds]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProject, setFilterProject] = useState<string[]>([]);
   const [isUnauthorizedDialogOpen, setIsUnauthorizedDialogOpen] = useState(false);
@@ -204,6 +208,7 @@ export default function Employees() {
     performance_level_id: false,
     performance_update_date: false,
     replacement_needed: false,
+    phone: false,
     created_at: false,
     updated_at: false,
     created_by: false,
@@ -237,6 +242,7 @@ export default function Employees() {
     performance_level_id: 'ביצועי העובד',
     performance_update_date: 'תאריך עדכון ביצועים',
     replacement_needed: 'לגייס במקומו?',
+    phone: 'מספר טלפון',
   };
 
   // Manager-only columns
@@ -259,7 +265,7 @@ export default function Employees() {
     'professional_experience_years', 'organization_experience_years', 'city',
     'start_date', 'cost', 'attrition_risk', 'attrition_risk_reason',
     'unit_criticality', 'salary_raise_date', 'salary_raise_percentage',
-    'created_at', 'updated_at', 'created_by', 'our_sourcing', 'leaving_reason_id', 'performance_level_id', 'performance_update_date', 'replacement_needed'
+    'created_at', 'updated_at', 'created_by', 'our_sourcing', 'leaving_reason_id', 'performance_level_id', 'performance_update_date', 'replacement_needed', 'phone'
   ], []);
 
   const { columnOrder, updateOrder: updateColumnOrder, resetOrder: resetColumnOrder } = useColumnOrder('employees', defaultColumnOrder);
@@ -436,7 +442,16 @@ export default function Employees() {
 
       const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-      setEmployees(mapDocs(employeesSnap).filter((emp: any) => !emp.is_left));
+      let allEmp = mapDocs(employeesSnap).filter((emp: any) => !emp.is_left);
+
+      // Filter by project permissions if not super admin
+      if (!isSuperAdmin) {
+        allEmp = allEmp.filter((emp: any) =>
+          emp.project_id && allowedProjectIds?.includes(emp.project_id)
+        );
+      }
+
+      setEmployees(allEmp);
       setJobRoles(mapDocs(rolesSnap));
       setProjects(mapDocs(projectsSnap));
       setEmployingCompanies(mapDocs(companiesSnap));
@@ -894,6 +909,9 @@ export default function Employees() {
           case 'updated_at':
             row[label] = employee[col] ? new Date(employee[col] as string).toLocaleDateString('he-IL') : '-';
             break;
+          case 'phone':
+            row[label] = employee.phone ?? '-';
+            break;
           case 'cost':
             row[label] = employee.cost ?? '-';
             break;
@@ -996,7 +1014,7 @@ export default function Employees() {
                 <SelectValue placeholder="בחר תכנית" />
               </SelectTrigger>
               <SelectContent>
-                {projects.map((project) => (
+                {allowedProjects.map((project) => (
                   <SelectItem key={project.id} value={project.id} className="text-right">{project.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -2246,7 +2264,7 @@ export default function Employees() {
               <div className="space-y-2">
                 <Label>תכנית</Label>
                 <MultiSelect
-                  options={projects.map((p) => ({ value: p.id, label: p.name }))}
+                  options={allowedProjects.map((p) => ({ value: p.id, label: p.name }))}
                   selected={filterProject}
                   onChange={setFilterProject}
                   placeholder="בחר תכניות"

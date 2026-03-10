@@ -137,7 +137,7 @@ const COLORS = [
 
 export default function Analytics() {
   const navigate = useNavigate();
-  const { user, loading: authLoading, isManager, isSuperAdmin } = useAuth();
+  const { user, loading: authLoading, isManager, isSuperAdmin, allowedProjectIds } = useAuth();
   const [loading, setLoading] = useState(true);
   const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
   const [projects, setProjects] = useState<NamedEntity[]>([]);
@@ -147,6 +147,10 @@ export default function Analytics() {
   const [seniorityLevels, setSeniorityLevels] = useState<NamedEntity[]>([]);
   const [leavingReasons, setLeavingReasons] = useState<NamedEntity[]>([]);
   const [performanceLevels, setPerformanceLevels] = useState<NamedEntity[]>([]);
+  const allowedProjects = useMemo(() => {
+    if (isSuperAdmin) return projects;
+    return projects.filter(p => allowedProjectIds?.includes(p.id));
+  }, [projects, isSuperAdmin, allowedProjectIds]);
 
   // Filter states
   const [filterProject, setFilterProject] = useState<string[]>([]);
@@ -247,7 +251,16 @@ export default function Analytics() {
 
     const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-    setAllEmployees(mapDocs(employeesRes).filter((emp: any) => !emp.is_left));
+    let allEmp = mapDocs(employeesRes).filter((emp: any) => !emp.is_left);
+
+    // Filter by project permissions if not super admin
+    if (!isSuperAdmin) {
+      allEmp = allEmp.filter((emp: any) =>
+        emp.project_id && allowedProjectIds?.includes(emp.project_id)
+      );
+    }
+
+    setAllEmployees(allEmp);
     setProjects(mapDocs(projectsRes));
     setRoles(mapDocs(rolesRes));
     setCompanies(mapDocs(companiesRes));
@@ -1046,7 +1059,7 @@ export default function Analytics() {
                 <MultiSelect
                   placeholder="כל התכניות"
                   options={[
-                    ...projects.map(p => ({ label: p.name, value: p.id })),
+                    ...allowedProjects.map(p => ({ label: p.name, value: p.id })),
                     { label: 'ללא משויך', value: 'none' }
                   ]}
                   selected={filterProject}

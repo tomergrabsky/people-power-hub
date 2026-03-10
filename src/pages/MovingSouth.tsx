@@ -139,7 +139,7 @@ interface NamedEntity {
 
 export default function MovingSouth() {
     const navigate = useNavigate();
-    const { user, loading: authLoading, isManager } = useAuth();
+    const { user, loading: authLoading, isManager, isSuperAdmin, allowedProjectIds } = useAuth();
     const [loading, setLoading] = useState(true);
     const [allEmployees, setAllEmployees] = useState<Employee[]>([]);
     const [projects, setProjects] = useState<NamedEntity[]>([]);
@@ -149,6 +149,10 @@ export default function MovingSouth() {
     const [seniorityLevels, setSeniorityLevels] = useState<NamedEntity[]>([]);
     const [leavingReasons, setLeavingReasons] = useState<NamedEntity[]>([]);
     const [performanceLevels, setPerformanceLevels] = useState<NamedEntity[]>([]);
+    const allowedProjects = useMemo(() => {
+        if (isSuperAdmin) return projects;
+        return projects.filter(p => allowedProjectIds?.includes(p.id));
+    }, [projects, isSuperAdmin, allowedProjectIds]);
 
     // Moving South Table states
     const [movingSouthSearch, setMovingSouthSearch] = useState('');
@@ -182,7 +186,7 @@ export default function MovingSouth() {
     const [selectedMatrixCell, setSelectedMatrixCell] = useState<{ criticality: number; risk: number } | null>(null);
     const [isMatrixDialogOpen, setIsMatrixDialogOpen] = useState(false);
 
-    const { isSuperAdmin } = useAuth();
+
 
     const defaultFieldOrder = useMemo(() => [
         'row_fullname_jobrole',
@@ -300,7 +304,16 @@ export default function MovingSouth() {
 
             const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
-            setAllEmployees(mapDocs(employeesRes).filter((emp: any) => !emp.is_left));
+            let allEmp = mapDocs(employeesRes).filter((emp: any) => !emp.is_left);
+
+            // Filter by project permissions if not super admin
+            if (!isSuperAdmin) {
+                allEmp = allEmp.filter((emp: any) =>
+                    emp.project_id && allowedProjectIds?.includes(emp.project_id)
+                );
+            }
+
+            setAllEmployees(allEmp);
             setProjects(mapDocs(projectsRes));
             setJobRoles(mapDocs(rolesRes));
             setEmployingCompanies(mapDocs(companiesRes));
@@ -797,7 +810,7 @@ export default function MovingSouth() {
                                 <SelectValue placeholder="בחר תכנית" />
                             </SelectTrigger>
                             <SelectContent>
-                                {projects.map((project) => (
+                                {allowedProjects.map((project) => (
                                     <SelectItem key={project.id} value={project.id} className="text-right">{project.name}</SelectItem>
                                 ))}
                             </SelectContent>
@@ -2009,7 +2022,7 @@ export default function MovingSouth() {
                                             <MultiSelect
                                                 placeholder="פילטר תכנית"
                                                 options={[
-                                                    ...projects.map(p => ({ label: p.name, value: p.id })),
+                                                    ...allowedProjects.map(p => ({ label: p.name, value: p.id })),
                                                     { label: 'ללא משויך', value: 'none' }
                                                 ]}
                                                 selected={movingSouthFilterProject}

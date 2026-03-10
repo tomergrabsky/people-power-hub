@@ -7,7 +7,7 @@ import {
   signOut as firebaseSignOut,
   updateProfile
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../integrations/firebase/client';
 import { toast } from 'sonner';
 
@@ -17,6 +17,7 @@ interface AuthContextType {
   user: User | null;
   session: any | null; // Placeholder to avoid breaking other components using session
   role: AppRole | null;
+  allowedProjectIds: string[] | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, fullName: string) => Promise<{ error: Error | null }>;
@@ -30,19 +31,22 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
+  const [allowedProjectIds, setAllowedProjectIds] = useState<string[] | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchUserRole = async (userId: string) => {
+  const fetchUserPermissions = async (userId: string) => {
     try {
+      // Fetch role
       const roleRef = doc(db, 'user_roles', userId);
-      const docSnap = await getDoc(roleRef);
+      const roleSnap = await getDoc(roleRef);
 
-      if (docSnap.exists()) {
-        const data = docSnap.data();
+      if (roleSnap.exists()) {
+        const data = roleSnap.data();
         if (data.is_deleted === true) {
           await firebaseSignOut(auth);
           setUser(null);
           setRole(null);
+          setAllowedProjectIds(null);
           toast.error('חשבונך בוטל. פנה למנהל המערכת.');
           return;
         }
@@ -64,8 +68,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
         setRole('user');
       }
+
+      // Fetch allowed projects
+      const q = query(collection(db, 'user_projects'), where('user_id', '==', userId));
+      const projectsSnap = await getDocs(q);
+      const projectIds = projectsSnap.docs.map(doc => doc.data().project_id);
+      setAllowedProjectIds(projectIds);
+
     } catch (e) {
-      console.error("Error fetching role", e);
+      console.error("Error fetching permissions", e);
     }
   };
 
@@ -74,9 +85,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(currentUser);
 
       if (currentUser) {
-        await fetchUserRole(currentUser.uid);
+        await fetchUserPermissions(currentUser.uid);
       } else {
         setRole(null);
+        setAllowedProjectIds(null);
       }
       setLoading(false);
     });
@@ -115,6 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
     setUser(null);
     setRole(null);
+    setAllowedProjectIds(null);
   };
 
   const isManager = role === 'manager' || role === 'super_admin';
@@ -125,6 +138,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       user,
       session: user ? { user } : null,
       role,
+      allowedProjectIds,
       loading,
       signIn,
       signUp,
@@ -144,3 +158,4 @@ export function useAuth() {
   }
   return context;
 }
+

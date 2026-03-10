@@ -35,7 +35,7 @@ interface Employee {
 
 export default function Dashboard() {
   const navigate = useNavigate();
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, isSuperAdmin, allowedProjectIds } = useAuth();
   const [stats, setStats] = useState({
     totalEmployees: 0,
     upcomingBirthdays: 0,
@@ -64,10 +64,17 @@ export default function Dashboard() {
     setLoading(true);
     try {
       const snap = await getDocs(collection(db, 'employees'));
-      const fetchedEmployees = (snap.docs.map(doc => ({
+      let fetchedEmployees = (snap.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
-      })) as Employee[]).filter(emp => !emp.is_left);
+      })) as any[]).filter(emp => !emp.is_left);
+
+      // Filter by project permissions if not super admin
+      if (!isSuperAdmin) {
+        fetchedEmployees = fetchedEmployees.filter(emp =>
+          emp.project_id && allowedProjectIds?.includes(emp.project_id)
+        );
+      }
 
       setEmployees(fetchedEmployees);
 

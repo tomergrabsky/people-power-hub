@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { MainLayout } from "@/components/layout/MainLayout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -72,6 +73,7 @@ Example Number Output:
 Always use realistic mock data for your answers. Answer in Hebrew. Keep your text responses concise and clear.`;
 
 export default function AiAssistant() {
+    const { isSuperAdmin, allowedProjectIds } = useAuth();
     const [apiKey, setApiKey] = useState(() => localStorage.getItem("groq_api_key") || import.meta.env.VITE_GROQ_API_KEY || "");
     const [isKeySaved, setIsKeySaved] = useState(!!apiKey || !!import.meta.env.VITE_GROQ_API_KEY);
     const [keyInput, setKeyInput] = useState("");
@@ -123,6 +125,10 @@ export default function AiAssistant() {
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
                 const employees = mapDocs(employeesRes)
                     .filter((emp: any) => !emp.is_left)
+                    .filter((emp: any) => {
+                        if (isSuperAdmin) return true;
+                        return emp.project_id && allowedProjectIds?.includes(emp.project_id);
+                    })
                     .map((emp: any) => ({
                         name: emp.full_name,
                         role: getLabel(jobRoles, emp.job_role_id),
