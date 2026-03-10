@@ -50,6 +50,7 @@ import { Label } from '@/components/ui/label';
 import { Search, Plus, Pencil, Trash2, Filter, X, Loader2, ArrowUpDown, ArrowUp, ArrowDown, Eye, Download, GripVertical, RotateCcw, Move, Users, Building2, UserMinus } from 'lucide-react';
 import { toast } from 'sonner';
 import { MultiSelect } from '@/components/ui/multi-select';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useFormFieldOrder } from '@/hooks/useFormFieldOrder';
 import { DraggableFormContainer } from '@/components/employees/DraggableFormContainer';
 import { UnauthorizedActionDialog } from '@/components/employees/UnauthorizedActionDialog';
@@ -181,6 +182,8 @@ export default function Employees() {
   const [showFilters, setShowFilters] = useState(false);
   const [sortField, setSortField] = useState<SortField | null>(null);
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [selectedExportFields, setSelectedExportFields] = useState<string[]>([]);
 
   // Column visibility - all employee table fields
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
@@ -243,10 +246,26 @@ export default function Employees() {
     performance_update_date: 'תאריך עדכון ביצועים',
     replacement_needed: 'לגייס במקומו?',
     phone: 'מספר טלפון',
+    emergency_phone: 'טלפון חירום',
+    linkedin_url: 'לינקדאין',
+    real_market_salary: 'שכר שוק ריאלי',
+    revolving_door: 'דלת מסתובבת',
+    retention_plan: 'תכנית שימור יחידה',
+    company_retention_plan: 'תכנית שימור חברה',
+    company_attrition_risk: 'סיכוי לעזוב - לדעת החברה',
+    is_left: 'האם עזב',
+    left_date: 'תאריך עזיבה',
+    left_reason: 'סיבת עזיבה',
+    left_notes: 'הערות עזיבה',
   };
 
   // Manager-only columns
-  const managerOnlyColumns = ['cost', 'attrition_risk', 'attrition_risk_reason', 'unit_criticality', 'salary_raise_date', 'salary_raise_percentage', 'leaving_reason_id', 'performance_level_id', 'performance_update_date'];
+  const managerOnlyColumns = [
+    'cost', 'attrition_risk', 'attrition_risk_reason', 'unit_criticality',
+    'salary_raise_date', 'salary_raise_percentage', 'leaving_reason_id',
+    'performance_level_id', 'performance_update_date', 'real_market_salary',
+    'retention_plan', 'company_retention_plan', 'company_attrition_risk'
+  ];
 
   const visibleColumnsCount = Object.keys(visibleColumns).filter((key) => {
     if (!visibleColumns[key]) return false;
@@ -873,8 +892,7 @@ export default function Employees() {
   // Export to Excel function
   const exportToExcel = () => {
     // Get visible columns for export
-    const exportColumns = Object.keys(visibleColumns).filter(col => {
-      if (!visibleColumns[col]) return false;
+    const exportColumns = selectedExportFields.filter(col => {
       if (managerOnlyColumns.includes(col) && !isManager) return false;
       return true;
     });
@@ -2240,7 +2258,14 @@ export default function Employees() {
                 נקה סננים
               </Button>
             )}
-            <Button variant="outline" onClick={exportToExcel}>
+            <Button variant="outline" onClick={() => {
+              setSelectedExportFields(Object.keys(visibleColumns).filter(col => {
+                if (!visibleColumns[col]) return false;
+                if (managerOnlyColumns.includes(col) && !isManager) return false;
+                return true;
+              }));
+              setIsExportDialogOpen(true);
+            }}>
               <Download className="w-4 h-4 ml-2" />
               ייצוא לאקסל
             </Button>
@@ -2692,6 +2717,50 @@ export default function Employees() {
               <Button type="button" variant="destructive" onClick={confirmDelete} disabled={formLoading}>
                 {formLoading ? <Loader2 className="w-4 h-4 animate-spin ml-2" /> : null}
                 מחק לצמיתות
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={isExportDialogOpen} onOpenChange={setIsExportDialogOpen}>
+          <DialogContent className="sm:max-w-2xl text-right" dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="text-right">ייצוא נתוני עובדים לאקסל</DialogTitle>
+              <DialogDescription className="text-right">
+                בחר את השדות שברצונך לכלול בקובץ האקסל
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 py-4 max-h-[60vh] overflow-y-auto pr-2">
+              {Object.keys(columnLabels).map((field) => {
+                if (managerOnlyColumns.includes(field) && !isManager) return null;
+                return (
+                  <div key={field} className="flex items-center gap-2">
+                    <Checkbox
+                      id={`export-${field}`}
+                      checked={selectedExportFields.includes(field)}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedExportFields([...selectedExportFields, field]);
+                        } else {
+                          setSelectedExportFields(selectedExportFields.filter(f => f !== field));
+                        }
+                      }}
+                    />
+                    <Label htmlFor={`export-${field}`} className="cursor-pointer text-sm">{columnLabels[field]}</Label>
+                  </div>
+                );
+              })}
+            </div>
+            <DialogFooter className="flex flex-row justify-between items-center w-full gap-2">
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => setSelectedExportFields(Object.keys(columnLabels).filter(f => !managerOnlyColumns.includes(f) || isManager))}>בחר הכל</Button>
+                <Button variant="outline" size="sm" onClick={() => setSelectedExportFields([])}>נקה הכל</Button>
+              </div>
+              <Button onClick={() => {
+                exportToExcel();
+                setIsExportDialogOpen(false);
+              }}>
+                ייצא לאקסל
               </Button>
             </DialogFooter>
           </DialogContent>
