@@ -182,7 +182,7 @@ export default function Employees() {
   const [visibleColumns, setVisibleColumns] = useState<Record<string, boolean>>({
     id: false,
     full_name: true,
-    id_number: false,
+    id_number: true,
     birth_date: true,
     job_role_id: true,
     project_id: true,
@@ -337,6 +337,7 @@ export default function Employees() {
   // Form fields
   const [formData, setFormData] = useState({
     full_name: '',
+    id_number: '',
     job_role_id: '',
     professional_experience_years: 0,
     project_id: '',
@@ -609,6 +610,7 @@ export default function Employees() {
   const resetForm = () => {
     setFormData({
       full_name: '',
+      id_number: '',
       job_role_id: '',
       professional_experience_years: 0,
       project_id: '',
@@ -649,11 +651,9 @@ export default function Employees() {
     }
 
     setFormLoading(true);
-    // Generate unique id_number using timestamp + random string
-    const uniqueIdNumber = `EMP-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const insertData: Record<string, unknown> = {
       full_name: formData.full_name,
-      id_number: uniqueIdNumber,
+      id_number: formData.id_number || null,
       job_role_id: formData.job_role_id || null,
       professional_experience_years: formData.professional_experience_years,
       project_id: formData.project_id || null,
@@ -710,6 +710,7 @@ export default function Employees() {
     setFormLoading(true);
     const updateData: Record<string, unknown> = {
       full_name: formData.full_name,
+      id_number: formData.id_number || null,
       job_role_id: formData.job_role_id || null,
       professional_experience_years: formData.professional_experience_years,
       project_id: formData.project_id || null,
@@ -786,6 +787,7 @@ export default function Employees() {
     setSelectedEmployee(employee);
     setFormData({
       full_name: employee.full_name,
+      id_number: employee.id_number || '',
       job_role_id: employee.job_role_id || '',
       professional_experience_years: employee.professional_experience_years,
       project_id: employee.project_id || '',
@@ -949,6 +951,15 @@ export default function Employees() {
               className="text-right"
               value={formData.full_name}
               onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+            />
+          </div>
+          <div className="space-y-2 text-right">
+            <Label htmlFor="id_number">תעודת זהות</Label>
+            <Input
+              id="id_number"
+              className="text-right"
+              value={formData.id_number}
+              onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
             />
           </div>
           <div className="space-y-2 text-right">
@@ -1521,6 +1532,14 @@ export default function Employees() {
             <Input
               className="text-right bg-muted"
               value={selectedEmployee?.full_name || ''}
+              disabled
+            />
+          </div>
+          <div className="space-y-2 text-right">
+            <Label>תעודת זהות</Label>
+            <Input
+              className="text-right bg-muted"
+              value={selectedEmployee?.id_number || ''}
               disabled
             />
           </div>

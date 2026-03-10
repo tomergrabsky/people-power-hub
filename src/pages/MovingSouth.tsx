@@ -212,6 +212,7 @@ export default function MovingSouth() {
 
     const [formData, setFormData] = useState<any>({
         full_name: '',
+        id_number: '',
         job_role_id: '',
         professional_experience_years: 0,
         project_id: '',
@@ -658,11 +659,12 @@ export default function MovingSouth() {
 
     const handleExportToExcel = () => {
         const dataToExport = movingSouthTableData.map(emp => ({
+            'שם העובד': emp.full_name,
+            'תעודת זהות': emp.id_number || '-',
             'קריטיות X סיכוי לעזיבה': emp.attentionScore,
             'מידת קריטיות ליחידה': emp.unit_criticality || 0,
             'מידת סיכוי לעזיבה': emp.attrition_risk || 0,
             'לגייס במקומו': emp.replacement_needed || '-',
-            'שם העובד': emp.full_name,
             'ענף': emp.branchName,
             'תכנית': emp.projectName,
             'עיר': emp.city || '-',
@@ -689,6 +691,7 @@ export default function MovingSouth() {
         setSelectedEmployee(emp);
         setFormData({
             ...emp,
+            id_number: emp.id_number || '',
             cost: emp.cost?.toString() || '',
             attrition_risk: emp.attrition_risk?.toString() || '',
             unit_criticality: emp.unit_criticality?.toString() || '',
@@ -749,6 +752,15 @@ export default function MovingSouth() {
                             className="text-right"
                             value={formData.full_name}
                             onChange={(e) => setFormData({ ...formData, full_name: e.target.value })}
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="id_number">תעודת זהות</Label>
+                        <Input
+                            id="id_number"
+                            className="text-right"
+                            value={formData.id_number}
+                            onChange={(e) => setFormData({ ...formData, id_number: e.target.value })}
                         />
                     </div>
                     <div className="space-y-2 text-right">
@@ -1320,6 +1332,14 @@ export default function MovingSouth() {
                         <Input
                             className="text-right bg-muted"
                             value={selectedEmployee?.full_name || ''}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>תעודת זהות</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={selectedEmployee?.id_number || ''}
                             disabled
                         />
                     </div>
@@ -2449,6 +2469,7 @@ export default function MovingSouth() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">תעודת זהות</TableHead>
                                             <TableHead className="text-right">שם העובד</TableHead>
                                             <TableHead className="text-right">תכנית</TableHead>
                                             <TableHead className="text-right">ענף</TableHead>
@@ -2468,6 +2489,7 @@ export default function MovingSouth() {
                                                         </Button>
                                                     </div>
                                                 </TableCell>
+                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                                                 <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
                                                 <TableCell className="text-right">{emp.projectName}</TableCell>
                                                 <TableCell className="text-right">{emp.branchName}</TableCell>
@@ -2493,6 +2515,7 @@ export default function MovingSouth() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">תעודת זהות</TableHead>
                                             <TableHead className="text-right">שם העובד</TableHead>
                                             <TableHead className="text-right">תכנית</TableHead>
                                             <TableHead className="text-right">ענף</TableHead>
@@ -2512,6 +2535,7 @@ export default function MovingSouth() {
                                                         </Button>
                                                     </div>
                                                 </TableCell>
+                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                                                 <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
                                                 <TableCell className="text-right">{emp.projectName}</TableCell>
                                                 <TableCell className="text-right">{emp.branchName}</TableCell>
@@ -2537,6 +2561,7 @@ export default function MovingSouth() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">תעודת זהות</TableHead>
                                             <TableHead className="text-right">שם העובד</TableHead>
                                             <TableHead className="text-right">תכנית</TableHead>
                                             <TableHead className="text-right">ענף</TableHead>
@@ -2556,6 +2581,7 @@ export default function MovingSouth() {
                                                         </Button>
                                                     </div>
                                                 </TableCell>
+                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                                                 <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
                                                 <TableCell className="text-right">{emp.projectName}</TableCell>
                                                 <TableCell className="text-right">{emp.branchName}</TableCell>
@@ -2584,6 +2610,7 @@ export default function MovingSouth() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">תעודת זהות</TableHead>
                                             <TableHead className="text-right">שם העובד</TableHead>
                                             <TableHead className="text-right">תכנית</TableHead>
                                             <TableHead className="text-right">ענף</TableHead>
@@ -2603,6 +2630,7 @@ export default function MovingSouth() {
                                                         </Button>
                                                     </div>
                                                 </TableCell>
+                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                                                 <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
                                                 <TableCell className="text-right">{emp.projectName}</TableCell>
                                                 <TableCell className="text-right">{emp.branchName}</TableCell>
@@ -2616,7 +2644,7 @@ export default function MovingSouth() {
                                 <Button onClick={() => setIsDashboardCriticalityDialogOpen(false)}>סגור</Button>
                             </DialogFooter>
                         </DialogContent>
-                    </Dialog>
+                    </Dialog >
 
                     <Dialog open={isDashboardAttentionScoreDialogOpen} onOpenChange={setIsDashboardAttentionScoreDialogOpen}>
                         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
@@ -2631,6 +2659,7 @@ export default function MovingSouth() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">תעודת זהות</TableHead>
                                             <TableHead className="text-right">שם העובד</TableHead>
                                             <TableHead className="text-right">תכנית</TableHead>
                                             <TableHead className="text-right">ענף</TableHead>
@@ -2650,6 +2679,7 @@ export default function MovingSouth() {
                                                         </Button>
                                                     </div>
                                                 </TableCell>
+                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                                                 <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
                                                 <TableCell className="text-right">{emp.projectName}</TableCell>
                                                 <TableCell className="text-right">{emp.branchName}</TableCell>
@@ -2660,7 +2690,7 @@ export default function MovingSouth() {
                                 </Table>
                             </ScrollArea>
                         </DialogContent>
-                    </Dialog>
+                    </Dialog >
                     <Dialog open={isDashboardCompanyAttritionRiskDialogOpen} onOpenChange={setIsDashboardCompanyAttritionRiskDialogOpen}>
                         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                             <DialogHeader className="text-right">
@@ -2674,6 +2704,7 @@ export default function MovingSouth() {
                                     <TableHeader>
                                         <TableRow>
                                             <TableHead className="text-right">פעולות</TableHead>
+                                            <TableHead className="text-right">תעודת זהות</TableHead>
                                             <TableHead className="text-right">שם העובד</TableHead>
                                             <TableHead className="text-right">תכנית</TableHead>
                                             <TableHead className="text-right">ענף</TableHead>
@@ -2693,6 +2724,7 @@ export default function MovingSouth() {
                                                         </Button>
                                                     </div>
                                                 </TableCell>
+                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                                                 <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
                                                 <TableCell className="text-right">{projects.find(p => p.id === emp.project_id)?.name || '-'}</TableCell>
                                                 <TableCell className="text-right">{branches.find(b => b.id === emp.branch_id)?.name || '-'}</TableCell>
@@ -2703,10 +2735,10 @@ export default function MovingSouth() {
                                 </Table>
                             </ScrollArea>
                         </DialogContent>
-                    </Dialog>
+                    </Dialog >
 
                     {/* Matrix Dashboard Dialog */}
-                    <Dialog open={isMatrixDialogOpen} onOpenChange={setIsMatrixDialogOpen}>
+                    < Dialog open={isMatrixDialogOpen} onOpenChange={setIsMatrixDialogOpen} >
                         <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
                             <DialogHeader className="text-right">
                                 <DialogTitle className="flex items-center gap-2">
@@ -2723,6 +2755,7 @@ export default function MovingSouth() {
                                             <TableHead className="text-right">ענף</TableHead>
                                             <TableHead className="text-right">תכנית</TableHead>
                                             <TableHead className="text-right">שם העובד</TableHead>
+                                            <TableHead className="text-right">תעודת זהות</TableHead>
                                             <TableHead className="text-right">פעולות</TableHead>
                                         </TableRow>
                                     </TableHeader>
@@ -2736,6 +2769,7 @@ export default function MovingSouth() {
                                                 <TableCell className="text-right">{getBranchName(emp.branch_id)}</TableCell>
                                                 <TableCell className="text-right">{getProjectName(emp.project_id)}</TableCell>
                                                 <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
+                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                                                 <TableCell className="text-right">
                                                     <div className="flex gap-2 justify-end">
                                                         <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
@@ -2754,11 +2788,12 @@ export default function MovingSouth() {
                             <DialogFooter className="p-4 border-t">
                                 <Button onClick={() => setIsMatrixDialogOpen(false)}>סגור</Button>
                             </DialogFooter>
-                        </DialogContent>
-                    </Dialog>
+                        </DialogContent >
+                    </Dialog >
 
-                </div>
-            )}
-        </MainLayout>
+                </div >
+            )
+            }
+        </MainLayout >
     );
 }

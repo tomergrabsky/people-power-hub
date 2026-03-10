@@ -1873,6 +1873,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
                     <TableHead className="text-right">תפקיד</TableHead>
                     <TableHead className="text-right">שם העובד</TableHead>
@@ -1891,6 +1892,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
                       <TableCell className="text-right">{emp.roleName}</TableCell>
                       <TableCell className="font-medium text-right">{emp.full_name}</TableCell>
@@ -1922,6 +1924,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
                     <TableHead className="text-right">תפקיד</TableHead>
                     <TableHead className="text-right">שם העובד</TableHead>
@@ -1940,6 +1943,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
                       <TableCell className="text-right">{emp.roleName}</TableCell>
                       <TableCell className="font-medium text-right">{emp.full_name}</TableCell>
@@ -1971,6 +1975,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
                     <TableHead className="text-right">תפקיד</TableHead>
                     <TableHead className="text-right">שם העובד</TableHead>
@@ -1989,6 +1994,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
                       <TableCell className="text-right">{emp.roleName}</TableCell>
                       <TableCell className="font-medium text-right">{emp.full_name}</TableCell>
@@ -2020,6 +2026,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
                     <TableHead className="text-right">תפקיד</TableHead>
                     <TableHead className="text-right">שם העובד</TableHead>
@@ -2038,6 +2045,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
                       <TableCell className="text-right">{emp.roleName}</TableCell>
                       <TableCell className="font-medium text-right">{emp.full_name}</TableCell>
@@ -2069,6 +2077,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">סיכון עזיבה</TableHead>
                     <TableHead className="text-right">קריטיות ליחידה</TableHead>
                     <TableHead className="text-right">ענף</TableHead>
@@ -2090,6 +2099,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
                       <TableCell className="text-right">{getCriticalityLabel(emp.unit_criticality)}</TableCell>
                       <TableCell className="text-right">{emp.branchName}</TableCell>
@@ -2124,6 +2134,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">מידת סיכוי לעזיבה</TableHead>
                     <TableHead className="text-right">מידת קריטיות לארגון</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
@@ -2146,6 +2157,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
                       <TableCell className="text-right">{getCriticalityLabel(emp.unit_criticality)}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
@@ -2181,6 +2193,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">שכר משוער</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
                     <TableHead className="text-right">תפקיד</TableHead>
@@ -2202,6 +2215,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{emp.estimatedSalary?.toLocaleString() ?? 'לא מוגדר'}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
                       <TableCell className="text-right">{emp.roleName}</TableCell>
@@ -2236,6 +2250,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">שכר שוק</TableHead>
                     <TableHead className="text-right">שכר משוער</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
@@ -2258,6 +2273,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{emp.real_market_salary?.toLocaleString() ?? 'לא מוגדר'}</TableCell>
                       <TableCell className="text-right">{emp.estimatedSalary?.toLocaleString() ?? 'לא מוגדר'}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
@@ -2292,6 +2308,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">מידת סיכוי לעזיבה</TableHead>
                     <TableHead className="text-right">מידת קריטיות לארגון</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
@@ -2314,6 +2331,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
                       <TableCell className="text-right">{getCriticalityLabel(emp.unit_criticality)}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
@@ -2349,6 +2367,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">מידת סיכוי לעזיבה</TableHead>
                     <TableHead className="text-right">מידת קריטיות לארגון</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
@@ -2371,6 +2390,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
                       <TableCell className="text-right">{getCriticalityLabel(emp.unit_criticality)}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
@@ -2406,6 +2426,7 @@ export default function Analytics() {
                 <TableHeader>
                   <TableRow>
                     <TableHead className="text-right w-16">פעולות</TableHead>
+                    <TableHead className="text-right">תעודת זהות</TableHead>
                     <TableHead className="text-right">רמת סיניוריטי</TableHead>
                     <TableHead className="text-right">תפקיד</TableHead>
                     <TableHead className="text-right">שם העובד</TableHead>
@@ -2426,6 +2447,7 @@ export default function Analytics() {
                           <Eye className="w-4 h-4" />
                         </Button>
                       </TableCell>
+                      <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
                       <TableCell className="text-right">{emp.seniorityName}</TableCell>
                       <TableCell className="text-right">{emp.roleName}</TableCell>
                       <TableCell className="font-medium text-right">{emp.full_name}</TableCell>
@@ -2480,6 +2502,10 @@ export default function Analytics() {
                     <div className="space-y-2 text-right">
                       <Label>שם מלא</Label>
                       <Input className="text-right bg-muted" value={selectedEmployee.full_name || ''} disabled />
+                    </div>
+                    <div className="space-y-2 text-right">
+                      <Label>תעודת זהות</Label>
+                      <Input className="text-right bg-muted" value={selectedEmployee.id_number || ''} disabled />
                     </div>
                     <div className="space-y-2 text-right">
                       <Label>תפקיד</Label>
