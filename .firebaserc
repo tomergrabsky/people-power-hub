@@ -1,5 +1,7 @@
 {
   "projects": {
     "default": "employees-49404"
-  }
+  },
+  "targets": {},
+  "etags": {}
 }

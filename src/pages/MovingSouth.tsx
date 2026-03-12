@@ -283,10 +283,10 @@ export default function MovingSouth() {
     }, [user, authLoading, isSuperAdmin, navigate]);
 
     useEffect(() => {
-        if (user) {
+        if (user && !authLoading) {
             fetchData();
         }
-    }, [user]);
+    }, [user, authLoading]);
 
     const fetchData = async () => {
         setLoading(true);

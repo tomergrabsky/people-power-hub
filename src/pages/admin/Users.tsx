@@ -108,10 +108,10 @@ export default function AdminUsers() {
   }, [user, authLoading, isSuperAdmin, navigate]);
 
   useEffect(() => {
-    if (user && isSuperAdmin) {
+    if (user && !authLoading && isSuperAdmin) {
       fetchData();
     }
-  }, [user, isSuperAdmin, showDeleted]);
+  }, [user, authLoading, isSuperAdmin, showDeleted]);
 
   const fetchData = async () => {
     setLoading(true);

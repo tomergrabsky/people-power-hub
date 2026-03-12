@@ -55,10 +55,10 @@ export default function Dashboard() {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !authLoading) {
       fetchStats();
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   const fetchStats = async () => {
     setLoading(true);
