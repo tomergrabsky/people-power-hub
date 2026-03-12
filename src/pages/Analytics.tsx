@@ -90,6 +90,7 @@ interface Employee {
   full_name: string;
   job_role_id: string | null;
   project_id: string | null;
+  recruitment_plan_id?: string | null;
   city: string | null;
   start_date: string;
   cost: number | null;
@@ -147,6 +148,7 @@ export default function Analytics() {
   const [seniorityLevels, setSeniorityLevels] = useState<NamedEntity[]>([]);
   const [leavingReasons, setLeavingReasons] = useState<NamedEntity[]>([]);
   const [performanceLevels, setPerformanceLevels] = useState<NamedEntity[]>([]);
+  const [recruitmentPlans, setRecruitmentPlans] = useState<NamedEntity[]>([]);
   const allowedProjects = useMemo(() => {
     if (isSuperAdmin) return projects;
     return projects.filter(p => allowedProjectIds?.includes(p.id));
@@ -162,6 +164,9 @@ export default function Analytics() {
   // Dialog state for employee list by program
   const [selectedProgram, setSelectedProgram] = useState<string | null>(null);
   const [isProgramDialogOpen, setIsProgramDialogOpen] = useState(false);
+  
+  const [selectedRecruitmentPlan, setSelectedRecruitmentPlan] = useState<string | null>(null);
+  const [isRecruitmentPlanDialogOpen, setIsRecruitmentPlanDialogOpen] = useState(false);
 
   // Dialog state for employee list by branch
   const [selectedBranch, setSelectedBranch] = useState<string | null>(null);
@@ -214,10 +219,10 @@ export default function Analytics() {
   }, [user, authLoading, navigate]);
 
   useEffect(() => {
-    if (user) {
+    if (user && !authLoading) {
       fetchData();
     }
-  }, [user]);
+  }, [user, authLoading]);
 
   const formatToHebrewNumber = (val: number | string | null | undefined) => {
     if (val === null || val === undefined || val === '') return '';
@@ -238,7 +243,7 @@ export default function Analytics() {
   const fetchData = async () => {
     setLoading(true);
 
-    const [employeesRes, projectsRes, rolesRes, companiesRes, branchesRes, seniorityRes, leavingReasonsRes, performanceLevelsRes] = await Promise.all([
+    const [employeesRes, projectsRes, rolesRes, companiesRes, branchesRes, seniorityRes, leavingReasonsRes, performanceLevelsRes, recruitmentPlansRes] = await Promise.all([
       getDocs(collection(db, 'employees')),
       getDocs(collection(db, 'projects')),
       getDocs(collection(db, 'job_roles')),
@@ -247,6 +252,7 @@ export default function Analytics() {
       getDocs(collection(db, 'seniority_levels')),
       getDocs(collection(db, 'leaving_reasons')),
       getDocs(collection(db, 'performance_levels')),
+      getDocs(collection(db, 'recruitment_plans')),
     ]);
 
     const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
@@ -268,6 +274,7 @@ export default function Analytics() {
     setSeniorityLevels(mapDocs(seniorityRes));
     setLeavingReasons(mapDocs(leavingReasonsRes));
     setPerformanceLevels(mapDocs(performanceLevelsRes));
+    setRecruitmentPlans(mapDocs(recruitmentPlansRes));
     setLoading(false);
   };
 
@@ -319,6 +326,42 @@ export default function Analytics() {
     });
     return Object.entries(counts).map(([name, value]) => ({ name, value }));
   }, [filteredEmployees, roles]);
+
+  
+  const employeesByRecruitmentPlan = useMemo(() => {
+    const counts: Record<string, number> = {};
+    filteredEmployees.forEach((emp) => {
+      if (!emp.recruitment_plan_id) return;
+      const planName = recruitmentPlans.find((p) => p.id === emp.recruitment_plan_id)?.name;
+      if (!planName || planName === 'לא רלוונטי' || planName === 'לא מוגדר') return;
+      
+      counts[planName] = (counts[planName] || 0) + 1;
+    });
+    return Object.entries(counts).map(([name, value]) => ({ name, value })).filter(item => item.value > 0);
+  }, [filteredEmployees, recruitmentPlans]);
+
+  const employeesInSelectedRecruitmentPlan = useMemo(() => {
+    if (!selectedRecruitmentPlan) return [];
+
+    return filteredEmployees
+      .filter((emp) => {
+        const planName = recruitmentPlans.find((p) => p.id === emp.recruitment_plan_id)?.name || 'לא מוגדר';
+        return planName === selectedRecruitmentPlan;
+      })
+      .map((emp) => ({
+        ...emp,
+        roleName: roles.find((r) => r.id === emp.job_role_id)?.name || 'לא מוגדר',
+        seniorityName: seniorityLevels.find((s) => s.id === emp.seniority_level_id)?.name || 'לא מוגדר',
+        branchName: branches.find((b) => b.id === emp.branch_id)?.name || 'לא מוגדר',
+        projectName: projects.find((p) => p.id === emp.project_id)?.name || 'לא מוגדר',
+      }))
+      .sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
+  }, [filteredEmployees, selectedRecruitmentPlan, recruitmentPlans, roles, seniorityLevels, branches, projects]);
+
+  const handleRecruitmentPlanClick = (planName: string) => {
+    setSelectedRecruitmentPlan(planName);
+    setIsRecruitmentPlanDialogOpen(true);
+  };
 
   const employeesByCity = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1057,7 +1100,7 @@ export default function Analytics() {
                   תכנית
                 </Label>
                 <MultiSelect
-                  placeholder="כל התכניות"
+                  placeholder="כל הקבלנים/תכניות"
                   options={[
                     ...allowedProjects.map(p => ({ label: p.name, value: p.id })),
                     { label: 'ללא משויך', value: 'none' }
@@ -1391,6 +1434,31 @@ export default function Analytics() {
                     </CardContent>
                   </Card>
                 </div>
+
+                <Card className="glass-card">
+                  <CardHeader>
+                    <CardTitle>עובדים מקבלני משנה/תכניות גיוס</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-80">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={employeesByRecruitmentPlan}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                          <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                          <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                          <Tooltip content={<CustomTooltip />} />
+                          <Bar
+                            dataKey="value"
+                            fill="#1e3a5f"
+                            radius={[4, 4, 0, 0]}
+                            onClick={(data) => handleRecruitmentPlanClick(data.name)}
+                            style={{ cursor: 'pointer' }}
+                          />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </CardContent>
+                </Card>
 
                 {/* Row 4: Average experience by role */}
                 <Card className="glass-card">
@@ -1879,7 +1947,7 @@ export default function Analytics() {
           <ScrollArea className="max-h-96">
             {employeesInSelectedProgram.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
-                אין עובדים בתכנית זו
+                אין עובדים בתכנית זה
               </p>
             ) : (
               <Table>
@@ -2475,7 +2543,68 @@ export default function Analytics() {
         </DialogContent>
       </Dialog>
 
-      {/* Employee Detail Dialog */}
+      
+        {/* Recruitment Plan Dialog */}
+        <Dialog open={isRecruitmentPlanDialogOpen} onOpenChange={setIsRecruitmentPlanDialogOpen}>
+          <DialogContent className="max-w-4xl max-h-[80vh] flex flex-col">
+            <DialogHeader>
+              <DialogTitle>עובדים בקבלן משנה/תכנית גיוס: {selectedRecruitmentPlan}</DialogTitle>
+              <DialogDescription>
+                סה״כ: {employeesInSelectedRecruitmentPlan.length} עובדים
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="flex-1 -mx-6 px-6 relative mt-4">
+              {employeesInSelectedRecruitmentPlan.length > 0 ? (
+                <Table>
+                  <TableHeader className="bg-background/95 backdrop-blur z-10">
+                    <TableRow>
+                      <TableHead className="w-[100px] text-center">פעולות</TableHead>
+                      <TableHead className="text-right">ותק במקצוע</TableHead>
+                      <TableHead className="text-right">רמת ותק</TableHead>
+                      <TableHead className="text-right">תכנית</TableHead>
+                      <TableHead className="text-right">ענף</TableHead>
+                      <TableHead className="text-right">שם עובד</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {employeesInSelectedRecruitmentPlan.map((emp) => (
+                      <TableRow key={emp.id} className="hover:bg-muted/50 transition-colors">
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground transition-colors"
+                            onClick={() => {
+                              setIsRecruitmentPlanDialogOpen(false);
+                              openEmployeeDetailDialog(emp);
+                            }}
+                            title="צפייה בכרטיס עובד"
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </TableCell>
+                        <TableCell className="text-right" dir="ltr">{emp.professional_experience_years || '-'}</TableCell>
+                        <TableCell className="text-right">{emp.seniorityName}</TableCell>
+                        <TableCell className="text-right">{emp.projectName}</TableCell>
+                        <TableCell className="text-right">{emp.branchName}</TableCell>
+                        <TableCell className="font-medium text-right">{emp.full_name}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="flex items-center justify-center p-8 text-muted-foreground border-2 border-dashed rounded-lg">
+                  אין עובדים בתכנית גיוס זו
+                </div>
+              )}
+            </ScrollArea>
+            <DialogFooter className="mt-6 border-t pt-4">
+              <Button onClick={() => setIsRecruitmentPlanDialogOpen(false)}>סגור</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Employee Detail Dialog */}
       <Dialog open={isEmployeeDetailDialogOpen} onOpenChange={setIsEmployeeDetailDialogOpen}>
         <DialogContent className="max-w-4xl w-[90vw] max-h-[85vh] flex flex-col overflow-hidden" dir="rtl">
           <DialogHeader className="text-right flex-shrink-0">

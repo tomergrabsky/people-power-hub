@@ -42,7 +42,8 @@ const mainNavItems = [
 ];
 
 const adminNavItems = [
-  { title: 'ניהול תכניות', url: '/admin/projects', icon: Building2 },
+  { title: 'תכנית', url: '/admin/projects', icon: Building2 },
+  { title: 'קבלן משנה/תכנית גיוס', url: '/admin/recruitment-plans', icon: Building2 },
   { title: 'ניהול תפקידים', url: '/admin/roles', icon: Briefcase },
   { title: 'ניהול ענפים', url: '/admin/branches', icon: GitBranch },
   { title: 'רמות ותק', url: '/admin/seniority-levels', icon: Briefcase },

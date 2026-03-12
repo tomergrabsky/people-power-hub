@@ -238,10 +238,10 @@ export default function AdminUsers() {
         }
       }
 
-      toast.success('התכניות עודכנו בהצלחה');
+      toast.success('קבלני המשנה/תכניות עודכנו בהצלחה');
       setIsProjectsDialogOpen(false);
     } catch (e) {
-      toast.error('שגיאה בעדכון התכניות');
+      toast.error('שגיאה בעדכון קבלני המשנה/תכניות');
     }
     setFormLoading(false);
   };
@@ -602,7 +602,7 @@ export default function AdminUsers() {
                 <ul className="space-y-1 list-disc list-inside">
                   <li><strong>משתמש רגיל:</strong> גישה לתכניות שהוקצו לו בלבד</li>
                   <li><strong>מנהל:</strong> גישה לתכניות שהוקצו לו + צפייה בשדות רגישים (עלויות, סיכונים)</li>
-                  <li><strong>מנהל על:</strong> גישה מלאה לכל התכניות + ניהול משתמשים והגדרות</li>
+                  <li><strong>מנהל על:</strong> גישה מלאה לכל קבלני המשנה/תכניות + ניהול משתמשים והגדרות</li>
                 </ul>
               </div>
             </div>
@@ -621,7 +621,7 @@ export default function AdminUsers() {
             <DialogHeader>
               <DialogTitle>שיוך לתכניות</DialogTitle>
               <DialogDescription>
-                בחר את התכניות שהמשתמש {selectedUser?.full_name || selectedUser?.email} יוכל לגשת אליהן
+                בחר את קבלני המשנה/תכניות שהמשתמש {selectedUser?.full_name || selectedUser?.email} יוכל לגשת אליהם
               </DialogDescription>
             </DialogHeader>
             <div className="py-4 space-y-3 max-h-64 overflow-y-auto">

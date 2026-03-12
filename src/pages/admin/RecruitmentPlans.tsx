@@ -29,21 +29,21 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Plus, Pencil, Trash2, Building2, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
-interface Project {
+interface RecruitmentPlan {
   id: string;
   name: string;
   description: string | null;
   created_at: string;
 }
 
-export default function AdminProjects() {
+export default function AdminRecruitmentPlans() {
   const navigate = useNavigate();
   const { user, loading: authLoading, isSuperAdmin } = useAuth();
-  const [projects, setProjects] = useState<Project[]>([]);
+  const [recruitment_plans, setRecruitmentPlans] = useState<RecruitmentPlan[]>([]);
   const [loading, setLoading] = useState(true);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null);
+  const [selectedRecruitmentPlan, setSelectedRecruitmentPlan] = useState<RecruitmentPlan | null>(null);
   const [formLoading, setFormLoading] = useState(false);
   const [formData, setFormData] = useState({ name: '', description: '' });
 
@@ -58,17 +58,17 @@ export default function AdminProjects() {
 
   useEffect(() => {
     if (user && isSuperAdmin) {
-      fetchProjects();
+      fetchRecruitmentPlans();
     }
   }, [user, isSuperAdmin]);
 
-  const seedProjectsIfEmpty = async (fetchedProjects: Project[]) => {
-    if (fetchedProjects.length === 0) {
+  const seedRecruitmentPlansIfEmpty = async (fetchedRecruitmentPlans: RecruitmentPlan[]) => {
+    if (fetchedRecruitmentPlans.length === 0) {
       const initialValues = ["Product Go", "אינפיניטי", "SQLink", "עצמאי", "לא רלוונטי"];
       let hasAdded = false;
       for (const val of initialValues) {
         try {
-          await addDoc(collection(db, 'projects'), {
+          await addDoc(collection(db, 'recruitment_plans'), {
             name: val,
             description: "נוסף אוטומטית כערך התחלתי",
             created_at: new Date().toISOString()
@@ -79,25 +79,25 @@ export default function AdminProjects() {
         }
       }
       if (hasAdded) {
-        fetchProjects();
+        fetchRecruitmentPlans();
       }
     }
   };
 
-  const fetchProjects = async () => {
+  const fetchRecruitmentPlans = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, 'projects'));
+      const snap = await getDocs(collection(db, 'recruitment_plans'));
       const fetched = snap.docs.map(doc => ({
         id: doc.id,
         created_at: new Date().toISOString(),
         ...doc.data()
-      })) as Project[];
-      setProjects(fetched.sort((a, b) => a.name.localeCompare(b.name)));
+      })) as RecruitmentPlan[];
+      setRecruitmentPlans(fetched.sort((a, b) => a.name.localeCompare(b.name)));
       
       // Auto-seed if the list is completely empty
       if (fetched.length === 0) {
-        seedProjectsIfEmpty(fetched);
+        seedRecruitmentPlansIfEmpty(fetched);
       }
     } catch (e) {
       console.error(e);
@@ -117,7 +117,7 @@ export default function AdminProjects() {
     }
 
     try {
-      await addDoc(collection(db, 'projects'), {
+      await addDoc(collection(db, 'recruitment_plans'), {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
         created_at: new Date().toISOString()
@@ -126,7 +126,7 @@ export default function AdminProjects() {
       toast.success('התכנית נוספה בהצלחה');
       setIsAddDialogOpen(false);
       resetForm();
-      fetchProjects();
+      fetchRecruitmentPlans();
     } catch (e) {
       setFormLoading(false);
       toast.error('שגיאה בהוספת התכנית');
@@ -134,43 +134,43 @@ export default function AdminProjects() {
   };
 
   const handleEdit = async () => {
-    if (!selectedProject) return;
+    if (!selectedRecruitmentPlan) return;
     if (!formData.name.trim()) {
       toast.error('נא להזין שם תכנית');
       return;
     }
 
     try {
-      await updateDoc(doc(db, 'projects', selectedProject.id), {
+      await updateDoc(doc(db, 'recruitment_plans', selectedRecruitmentPlan.id), {
         name: formData.name.trim(),
         description: formData.description.trim() || null,
       });
       setFormLoading(false);
       toast.success('התכנית עודכנה בהצלחה');
       setIsEditDialogOpen(false);
-      setSelectedProject(null);
+      setSelectedRecruitmentPlan(null);
       resetForm();
-      fetchProjects();
+      fetchRecruitmentPlans();
     } catch (e) {
       setFormLoading(false);
       toast.error('שגיאה בעדכון התכנית');
     }
   };
 
-  const handleDelete = async (project: Project) => {
+  const handleDelete = async (project: RecruitmentPlan) => {
     if (!confirm(`האם למחוק את התכנית "${project.name}"?`)) return;
 
     try {
-      await deleteDoc(doc(db, 'projects', project.id));
+      await deleteDoc(doc(db, 'recruitment_plans', project.id));
       toast.success('התכנית נמחקה בהצלחה');
-      fetchProjects();
+      fetchRecruitmentPlans();
     } catch (e) {
       toast.error('שגיאה במחיקת התכנית. ייתכן שיש עובדים משויכים אליה.');
     }
   };
 
-  const openEditDialog = (project: Project) => {
-    setSelectedProject(project);
+  const openEditDialog = (project: RecruitmentPlan) => {
+    setSelectedRecruitmentPlan(project);
     setFormData({
       name: project.name,
       description: project.description || '',
@@ -195,24 +195,24 @@ export default function AdminProjects() {
       <div className="space-y-6 animate-fade-in">
         <div className="flex flex-col sm:flex-row justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-foreground">תכנית</h1>
+            <h1 className="text-3xl font-bold text-foreground">קבלן משנה/תכנית גיוס</h1>
             <p className="text-muted-foreground mt-1">הוספה ועריכה של תכניות במערכת</p>
           </div>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
               <Button onClick={resetForm}>
                 <Plus className="w-4 h-4 ml-2" />
-                הוסף תכנית
+                הוסף קבלן משנה/תכנית גיוס
               </Button>
             </DialogTrigger>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>הוספת תכנית חדשה</DialogTitle>
-                <DialogDescription>הזן את פרטי התכנית החדשה</DialogDescription>
+                <DialogTitle>הוספת קבלן משנה/תכנית גיוס חדשה</DialogTitle>
+                <DialogDescription>הזן את פרטי הקבלן משנה/תכנית גיוס החדשה</DialogDescription>
               </DialogHeader>
               <div className="space-y-4 py-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name">שם התכנית *</Label>
+                  <Label htmlFor="name">שם הקבלן משנה/תכנית גיוס *</Label>
                   <Input
                     id="name"
                     value={formData.name}
@@ -247,27 +247,27 @@ export default function AdminProjects() {
               <Building2 className="w-5 h-5 text-primary" />
               רשימת תכניות
             </CardTitle>
-            <CardDescription>סה״כ {projects.length} פריטים במערכת</CardDescription>
+            <CardDescription>סה״כ {recruitment_plans.length} פריטים במערכת</CardDescription>
           </CardHeader>
           <CardContent>
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>שם התכנית</TableHead>
+                  <TableHead>שם הקבלן משנה/תכנית גיוס</TableHead>
                   <TableHead>תיאור</TableHead>
                   <TableHead>תאריך יצירה</TableHead>
                   <TableHead className="w-24">פעולות</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {projects.length === 0 ? (
+                {recruitment_plans.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                       לא נמצאו פריטים
                     </TableCell>
                   </TableRow>
                 ) : (
-                  projects.map((project) => (
+                  recruitment_plans.map((project) => (
                     <TableRow key={project.id} className="hover:bg-secondary/30 transition-colors">
                       <TableCell className="font-medium">{project.name}</TableCell>
                       <TableCell className="text-muted-foreground">
@@ -306,12 +306,12 @@ export default function AdminProjects() {
         <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>עריכת תכנית</DialogTitle>
-              <DialogDescription>עדכן את פרטי התכנית</DialogDescription>
+              <DialogTitle>עריכת קבלן משנה/תכנית גיוס</DialogTitle>
+              <DialogDescription>עדכן את פרטי הקבלן משנה/תכנית גיוס</DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="edit-name">שם התכנית *</Label>
+                <Label htmlFor="edit-name">שם הקבלן משנה/תכנית גיוס *</Label>
                 <Input
                   id="edit-name"
                   value={formData.name}

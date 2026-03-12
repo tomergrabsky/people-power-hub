@@ -38,7 +38,7 @@ interface Employee {
 }
 
 const LeftEmployees = () => {
-    const { user, isManager, isSuperAdmin, allowedProjectIds } = useAuth();
+    const { user, loading: authLoading, isManager, isSuperAdmin, allowedProjectIds } = useAuth();
     const [employees, setEmployees] = useState<Employee[]>([]);
     const [jobRoles, setJobRoles] = useState<any[]>([]);
     const [leavingReasons, setLeavingReasons] = useState<any[]>([]);
@@ -57,8 +57,10 @@ const LeftEmployees = () => {
     const [isUnauthorizedDialogOpen, setIsUnauthorizedDialogOpen] = useState(false);
 
     useEffect(() => {
-        fetchData();
-    }, []);
+        if (user && !authLoading) {
+            fetchData();
+        }
+    }, [user, authLoading]);
 
     const fetchData = async () => {
         setLoading(true);

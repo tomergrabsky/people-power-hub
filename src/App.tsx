@@ -12,6 +12,7 @@ import Auth from "./pages/Auth";
 import Employees from "./pages/Employees";
 import LeftEmployees from "./pages/LeftEmployees";
 import AdminProjects from "./pages/admin/Projects";
+import AdminRecruitmentPlans from "./pages/admin/RecruitmentPlans";
 import AdminRoles from "./pages/admin/Roles";
 import AdminUsers from "./pages/admin/Users";
 import AdminEmployingCompanies from "./pages/admin/EmployingCompanies";
@@ -39,6 +40,7 @@ const App = () => (
             <Route path="/employees" element={<Employees />} />
             <Route path="/left-employees" element={<LeftEmployees />} />
             <Route path="/admin/projects" element={<AdminProjects />} />
+            <Route path="/admin/recruitment-plans" element={<AdminRecruitmentPlans />} />
             <Route path="/admin/roles" element={<AdminRoles />} />
             <Route path="/admin/branches" element={<AdminBranches />} />
             <Route path="/admin/seniority-levels" element={<AdminSeniorityLevels />} />

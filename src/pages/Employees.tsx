@@ -73,7 +73,7 @@ import {
 import { DraggableTableHeader } from '@/components/employees/DraggableTableHeader';
 import * as XLSX from 'xlsx';
 
-type SortField = 'full_name' | 'birth_date' | 'job_role_id' | 'project_id' | 'professional_experience_years' | 'organization_experience_years' | 'city' | 'start_date' | 'cost';
+type SortField = 'full_name' | 'birth_date' | 'job_role_id' | 'project_id' | 'recruitment_plan_id' | 'professional_experience_years' | 'organization_experience_years' | 'city' | 'start_date' | 'cost';
 type SortDirection = 'asc' | 'desc';
 
 interface Employee {
@@ -86,6 +86,7 @@ interface Employee {
   professional_experience_years: number;
   organization_experience_years: number;
   project_id: string | null;
+  recruitment_plan_id?: string | null;
   city: string | null;
   start_date: string;
   birth_date: string | null;
@@ -127,6 +128,11 @@ interface Project {
   name: string;
 }
 
+interface RecruitmentPlan {
+  id: string;
+  name: string;
+}
+
 interface EmployingCompany {
   id: string;
   name: string;
@@ -153,10 +159,11 @@ interface PerformanceLevel {
 }
 
 export default function Employees() {
-  const { isManager, isSuperAdmin, allowedProjectIds } = useAuth();
+  const { user, loading: authLoading, isManager, isSuperAdmin, allowedProjectIds } = useAuth();
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [jobRoles, setJobRoles] = useState<JobRole[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [recruitmentPlans, setRecruitmentPlans] = useState<RecruitmentPlan[]>([]);
   const [employingCompanies, setEmployingCompanies] = useState<EmployingCompany[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [seniorityLevels, setSeniorityLevels] = useState<SeniorityLevel[]>([]);
@@ -169,6 +176,7 @@ export default function Employees() {
   }, [projects, isSuperAdmin, allowedProjectIds]);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterProject, setFilterProject] = useState<string[]>([]);
+  const [filterRecruitmentPlan, setFilterRecruitmentPlan] = useState<string[]>([]);
   const [isUnauthorizedDialogOpen, setIsUnauthorizedDialogOpen] = useState(false);
   const [filterRole, setFilterRole] = useState<string[]>([]);
   const [filterCity, setFilterCity] = useState<string>('');
@@ -193,6 +201,7 @@ export default function Employees() {
     birth_date: true,
     job_role_id: true,
     project_id: true,
+    recruitment_plan_id: false,
     branch_id: false,
     employing_company_id: false,
     seniority_level_id: false,
@@ -224,6 +233,7 @@ export default function Employees() {
     birth_date: 'תאריך לידה',
     job_role_id: 'תפקיד',
     project_id: 'תכנית',
+    recruitment_plan_id: 'קבלן משנה/תכנית גיוס',
     branch_id: 'ענף',
     employing_company_id: 'חברה מעסיקה',
     seniority_level_id: 'סניוריטי',
@@ -279,7 +289,7 @@ export default function Employees() {
 
   // Default column order
   const defaultColumnOrder = useMemo(() => [
-    'full_name', 'id', 'id_number', 'birth_date', 'job_role_id', 'project_id',
+    'full_name', 'id', 'id_number', 'birth_date', 'job_role_id', 'project_id', 'recruitment_plan_id',
     'branch_id', 'employing_company_id', 'seniority_level_id',
     'professional_experience_years', 'organization_experience_years', 'city',
     'start_date', 'cost', 'attrition_risk', 'attrition_risk_reason',
@@ -335,7 +345,7 @@ export default function Employees() {
   // Default field order for the form
   const defaultFieldOrder = useMemo(() => [
     'row_fullname_jobrole',
-    'row_project_branch',
+    'row_project_branch', 'row_recruitment_plan',
     'row_company_experience',
     'row_city_startdate',
     'row_birthdate_phone',
@@ -366,6 +376,7 @@ export default function Employees() {
     job_role_id: '',
     professional_experience_years: 0,
     project_id: '',
+    recruitment_plan_id: '',
     city: '',
     start_date: '',
     birth_date: '',
@@ -439,19 +450,22 @@ export default function Employees() {
   };
 
   useEffect(() => {
-    fetchData();
-  }, []);
+    if (user && !authLoading) {
+      fetchData();
+    }
+  }, [user, authLoading]);
 
   const fetchData = async () => {
     setLoading(true);
     try {
       const [
         employeesSnap, rolesSnap, projectsSnap,
-        companiesSnap, branchesSnap, senioritySnap, leavingSnap, performanceSnap
+        recruitmentPlansSnap, companiesSnap, branchesSnap, senioritySnap, leavingSnap, performanceSnap
       ] = await Promise.all([
         getDocs(collection(db, 'employees')),
         getDocs(collection(db, 'job_roles')),
         getDocs(collection(db, 'projects')),
+        getDocs(collection(db, 'recruitment_plans')),
         getDocs(collection(db, 'employing_companies')),
         getDocs(collection(db, 'branches')),
         getDocs(collection(db, 'seniority_levels')),
@@ -461,7 +475,23 @@ export default function Employees() {
 
       const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
 
+      const rPlans = mapDocs(recruitmentPlansSnap).sort((a: any, b: any) => a.name.localeCompare(b.name, 'he', { numeric: true }));
+      setRecruitmentPlans(rPlans);
+      const defaultPlanId = rPlans.find((p: any) => p.name === 'לא רלוונטי')?.id;
+
       let allEmp = mapDocs(employeesSnap).filter((emp: any) => !emp.is_left);
+
+      // Backend migration for current employees (run async)
+      if (defaultPlanId) {
+        allEmp.forEach((emp: any) => {
+          if (!emp.recruitment_plan_id) {
+            emp.recruitment_plan_id = defaultPlanId; // Set in UI immediately
+            updateDoc(doc(db, 'employees', emp.id), {
+              recruitment_plan_id: defaultPlanId
+            }).catch(e => console.error("Migration failed for emp", emp.id, e));
+          }
+        });
+      }
 
       // Filter by project permissions if not super admin
       if (!isSuperAdmin) {
@@ -495,6 +525,12 @@ export default function Employees() {
     if (!projectId) return '-';
     const project = projects.find(p => p.id === projectId);
     return project?.name || '-';
+  };
+
+  const getRecruitmentPlanName = (planId: string | null | undefined) => {
+    if (!planId) return '-';
+    const plan = recruitmentPlans.find(p => p.id === planId);
+    return plan?.name || '-';
   };
 
   const getBranchName = (branchId: string | null | undefined) => {
@@ -554,6 +590,7 @@ export default function Employees() {
       strIdNum.includes(searchLower) ||
       strCity.includes(searchLower);
     const matchesProject = filterProject.length === 0 || (emp.project_id && filterProject.includes(emp.project_id));
+    const matchesRecruitmentPlan = filterRecruitmentPlan.length === 0 || (emp.recruitment_plan_id && filterRecruitmentPlan.includes(emp.recruitment_plan_id));
     const matchesRole = filterRole.length === 0 || (emp.job_role_id && filterRole.includes(emp.job_role_id));
     const matchesCity = !filterCity || emp.city?.toLowerCase().includes(filterCity.toLowerCase());
     const matchesBranch = filterBranch.length === 0 || (emp.branch_id && filterBranch.includes(emp.branch_id));
@@ -565,7 +602,7 @@ export default function Employees() {
     const matchesRevolvingDoor = filterRevolvingDoor.length === 0 || filterRevolvingDoor.includes(emp.revolving_door === true ? 'true' : 'false');
 
     return matchesSearch && matchesProject && matchesRole && matchesCity &&
-      matchesBranch && matchesEmployingCompany && matchesSeniority &&
+      matchesRecruitmentPlan && matchesBranch && matchesEmployingCompany && matchesSeniority &&
       matchesAttritionRisk && matchesUnitCriticality && matchesOurSourcing && matchesRevolvingDoor;
   });
 
@@ -591,6 +628,10 @@ export default function Employees() {
       case 'project_id':
         aValue = getProjectName(a.project_id).toLowerCase();
         bValue = getProjectName(b.project_id).toLowerCase();
+        break;
+      case 'recruitment_plan_id':
+        aValue = getRecruitmentPlanName(a.recruitment_plan_id).toLowerCase();
+        bValue = getRecruitmentPlanName(b.recruitment_plan_id).toLowerCase();
         break;
       case 'professional_experience_years':
         aValue = a.professional_experience_years;
@@ -642,12 +683,14 @@ export default function Employees() {
   };
 
   const resetForm = () => {
+    const defaultRecruitmentPlan = recruitmentPlans.find(p => p.name === 'לא רלוונטי')?.id || '';
     setFormData({
       full_name: '',
       id_number: '',
       job_role_id: '',
       professional_experience_years: 0,
       project_id: '',
+      recruitment_plan_id: defaultRecruitmentPlan,
       city: '',
       start_date: '',
       birth_date: '',
@@ -691,6 +734,7 @@ export default function Employees() {
       job_role_id: formData.job_role_id || null,
       professional_experience_years: formData.professional_experience_years,
       project_id: formData.project_id || null,
+      recruitment_plan_id: formData.recruitment_plan_id || null,
       city: formData.city || null,
       start_date: formData.start_date,
       birth_date: formData.birth_date || null,
@@ -748,6 +792,7 @@ export default function Employees() {
       job_role_id: formData.job_role_id || null,
       professional_experience_years: formData.professional_experience_years,
       project_id: formData.project_id || null,
+      recruitment_plan_id: formData.recruitment_plan_id || null,
       city: formData.city || null,
       start_date: formData.start_date,
       birth_date: formData.birth_date || null,
@@ -825,6 +870,7 @@ export default function Employees() {
       job_role_id: employee.job_role_id || '',
       professional_experience_years: employee.professional_experience_years,
       project_id: employee.project_id || '',
+      recruitment_plan_id: employee.recruitment_plan_id || '',
       city: employee.city || '',
       start_date: employee.start_date,
       birth_date: employee.birth_date || '',
@@ -1058,8 +1104,28 @@ export default function Employees() {
       ),
     },
     {
+      id: 'row_recruitment_plan',
+      label: 'ותק במקצוע',
+      component: (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2 text-right">
+            <Label htmlFor="professional_exp">ותק במקצוע (שנים)</Label>
+            <Input
+              id="professional_exp"
+              className="text-right"
+              type="number"
+              min="0"
+              value={formData.professional_experience_years}
+              onChange={(e) => setFormData({ ...formData, professional_experience_years: parseInt(e.target.value) || 0 })}
+              dir="ltr"
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
       id: 'row_company_experience',
-      label: 'חברה מעסיקה וותק',
+      label: 'חברה מעסיקה ותכנית גיוס',
       component: (
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2 text-right">
@@ -1079,16 +1145,20 @@ export default function Employees() {
             </Select>
           </div>
           <div className="space-y-2 text-right">
-            <Label htmlFor="professional_exp">ותק במקצוע (שנים)</Label>
-            <Input
-              id="professional_exp"
-              className="text-right"
-              type="number"
-              min="0"
-              value={formData.professional_experience_years}
-              onChange={(e) => setFormData({ ...formData, professional_experience_years: parseInt(e.target.value) || 0 })}
-              dir="ltr"
-            />
+            <Label htmlFor="recruitment_plan">קבלן משנה/תכנית גיוס</Label>
+            <Select
+              value={formData.recruitment_plan_id}
+              onValueChange={(value) => setFormData({ ...formData, recruitment_plan_id: value })}
+            >
+              <SelectTrigger className="text-right">
+                <SelectValue placeholder="בחר תכנית גיוס" />
+              </SelectTrigger>
+              <SelectContent>
+                {recruitmentPlans.map((plan) => (
+                  <SelectItem key={plan.id} value={plan.id} className="text-right">{plan.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
         </div>
       ),
@@ -1615,8 +1685,25 @@ export default function Employees() {
       ),
     },
     {
+      id: 'row_recruitment_plan',
+      label: 'ותק במקצוע',
+      component: (
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2 text-right">
+            <Label>ותק במקצוע (שנים)</Label>
+            <Input
+              className="text-right bg-muted"
+              value={selectedEmployee?.professional_experience_years?.toString() || '0'}
+              disabled
+              dir="ltr"
+            />
+          </div>
+        </div>
+      ),
+    },
+    {
       id: 'row_company_experience',
-      label: 'חברה מעסיקה וותק',
+      label: 'חברה מעסיקה ותכנית גיוס',
       component: (
         <div className="grid grid-cols-2 gap-4">
           <div className="space-y-2 text-right">
@@ -1628,12 +1715,11 @@ export default function Employees() {
             />
           </div>
           <div className="space-y-2 text-right">
-            <Label>ותק במקצוע (שנים)</Label>
+            <Label>קבלן משנה/תכנית גיוס</Label>
             <Input
               className="text-right bg-muted"
-              value={selectedEmployee?.professional_experience_years?.toString() || '0'}
+              value={getRecruitmentPlanName(selectedEmployee?.recruitment_plan_id || null)}
               disabled
-              dir="ltr"
             />
           </div>
         </div>
@@ -2292,7 +2378,7 @@ export default function Employees() {
                   options={allowedProjects.map((p) => ({ value: p.id, label: p.name }))}
                   selected={filterProject}
                   onChange={setFilterProject}
-                  placeholder="בחר תכניות"
+                  placeholder="בחר קבלנים/תכניות"
                 />
               </div>
               <div className="space-y-2">
