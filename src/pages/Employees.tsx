@@ -911,6 +911,7 @@ export default function Employees() {
   const clearFilters = () => {
     setSearchTerm('');
     setFilterProject([]);
+    setFilterRecruitmentPlan([]);
     setFilterRole([]);
     setFilterCity('');
     setFilterBranch([]);
@@ -924,6 +925,7 @@ export default function Employees() {
 
   const activeFiltersCount = [
     filterProject.length > 0,
+    filterRecruitmentPlan.length > 0,
     filterRole.length > 0,
     filterCity !== '',
     filterBranch.length > 0,
@@ -956,6 +958,9 @@ export default function Employees() {
             break;
           case 'project_id':
             row[label] = getProjectName(employee.project_id);
+            break;
+          case 'recruitment_plan_id':
+            row[label] = getRecruitmentPlanName(employee.recruitment_plan_id);
             break;
           case 'branch_id':
             row[label] = getBranchName(employee.branch_id);
@@ -2378,7 +2383,16 @@ export default function Employees() {
                   options={allowedProjects.map((p) => ({ value: p.id, label: p.name }))}
                   selected={filterProject}
                   onChange={setFilterProject}
-                  placeholder="בחר קבלנים/תכניות"
+                  placeholder="בחר תכניות"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>קבלן משנה/תכנית גיוס</Label>
+                <MultiSelect
+                  options={recruitmentPlans.map((r) => ({ value: r.id, label: r.name }))}
+                  selected={filterRecruitmentPlan}
+                  onChange={setFilterRecruitmentPlan}
+                  placeholder="בחר קבלן משנה/תכנית גיוס"
                 />
               </div>
               <div className="space-y-2">
