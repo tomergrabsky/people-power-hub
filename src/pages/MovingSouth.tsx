@@ -1351,6 +1351,32 @@ export default function MovingSouth() {
             ),
         },
         {
+            id: 'row_transfer_to_company',
+            label: 'מעבר לחברה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="transfer_to_company_id">מעבר לחברה</Label>
+                    <Select
+                        value={formData.transfer_to_company_id || 'not_relevant'}
+                        onValueChange={(value) => setFormData({ ...formData, transfer_to_company_id: value })}
+                    >
+                        <SelectTrigger className="text-right" dir="rtl">
+                            <SelectValue placeholder="חברה מיועדת" />
+                        </SelectTrigger>
+                        <SelectContent dir="rtl">
+                            <SelectItem value="not_relevant">לא רלוונטי</SelectItem>
+                            {employingCompanies.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>
+                                    {c.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+            ),
+        },
+        {
             id: 'row_replacement_needed',
             label: 'לגייס במקומו?',
             isManagerOnly: true,
@@ -1419,32 +1445,6 @@ export default function MovingSouth() {
                             className="text-right"
                         />
                     </div>
-                </div>
-            ),
-        },
-        {
-            id: 'row_transfer_to_company',
-            label: 'מעבר לחברה',
-            isManagerOnly: true,
-            component: (
-                <div className="space-y-2 text-right">
-                    <Label htmlFor="transfer_to_company_id">מעבר לחברה</Label>
-                    <Select
-                        value={formData.transfer_to_company_id || 'not_relevant'}
-                        onValueChange={(value) => setFormData({ ...formData, transfer_to_company_id: value })}
-                    >
-                        <SelectTrigger className="text-right" dir="rtl">
-                            <SelectValue placeholder="חברה מיועדת" />
-                        </SelectTrigger>
-                        <SelectContent dir="rtl">
-                            <SelectItem value="not_relevant">לא רלוונטי</SelectItem>
-                            {employingCompanies.map((c) => (
-                                <SelectItem key={c.id} value={c.id}>
-                                    {c.name}
-                                </SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
                 </div>
             ),
         },
@@ -1887,6 +1887,21 @@ export default function MovingSouth() {
             ),
         },
         {
+            id: 'row_transfer_to_company',
+            label: 'מעבר לחברה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>מעבר לחברה</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={getEmployingCompanyName(selectedEmployee?.transfer_to_company_id)}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
             id: 'row_replacement_needed',
             label: 'לגייס במקומו?',
             isManagerOnly: true,
@@ -2050,6 +2065,7 @@ export default function MovingSouth() {
             'row_hr_recommendation',
             'row_raan_decision',
             'row_raan_status',
+            'row_transfer_to_company',
             'row_replacement_needed',
             'row_commander_summary'
         ];
