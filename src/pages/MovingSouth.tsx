@@ -133,6 +133,7 @@ interface Employee {
     hr_recommendation?: string | null;
     raan_decision?: string | null;
     raan_decision_moving_south?: string | null;
+    transfer_to_company_id?: string | null;
 }
 
 interface NamedEntity {
@@ -218,6 +219,7 @@ export default function MovingSouth() {
         'row_hr_recommendation',
         'row_raan_decision',
         'row_raan_status',
+        'row_transfer_to_company',
         'row_cost',
         'row_salary_estimates',
         'row_salary_percentage_date',
@@ -260,6 +262,7 @@ export default function MovingSouth() {
         hr_recommendation: '',
         raan_decision: '',
         raan_decision_moving_south: '',
+        transfer_to_company_id: 'not_relevant',
     });
 
 
@@ -827,6 +830,7 @@ export default function MovingSouth() {
             hr_recommendation: emp.hr_recommendation || '',
             raan_decision: emp.raan_decision || '',
             raan_decision_moving_south: emp.raan_decision_moving_south || '',
+            transfer_to_company_id: emp.transfer_to_company_id || 'not_relevant',
         });
         setIsEditDialogOpen(true);
     };
@@ -845,6 +849,7 @@ export default function MovingSouth() {
                 salary_raise_percentage: formData.salary_raise_percentage ? parseFloat(formData.salary_raise_percentage) : null,
                 revolving_door: formData.revolving_door === 'true',
                 our_sourcing: formData.our_sourcing === 'true',
+                transfer_to_company_id: formData.transfer_to_company_id || 'not_relevant',
                 updated_at: new Date().toISOString()
             };
 
@@ -1414,6 +1419,32 @@ export default function MovingSouth() {
                             className="text-right"
                         />
                     </div>
+                </div>
+            ),
+        },
+        {
+            id: 'row_transfer_to_company',
+            label: 'מעבר לחברה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="transfer_to_company_id">מעבר לחברה</Label>
+                    <Select
+                        value={formData.transfer_to_company_id || 'not_relevant'}
+                        onValueChange={(value) => setFormData({ ...formData, transfer_to_company_id: value })}
+                    >
+                        <SelectTrigger className="text-right" dir="rtl">
+                            <SelectValue placeholder="חברה מיועדת" />
+                        </SelectTrigger>
+                        <SelectContent dir="rtl">
+                            <SelectItem value="not_relevant">לא רלוונטי</SelectItem>
+                            {employingCompanies.map((c) => (
+                                <SelectItem key={c.id} value={c.id}>
+                                    {c.name}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             ),
         },
