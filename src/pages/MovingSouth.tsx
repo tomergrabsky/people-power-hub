@@ -761,6 +761,42 @@ export default function MovingSouth() {
         toast.success('דוח אקסל יוצא בהצלחה');
     };
 
+    const renderDrilldownTable = (employees: Employee[]) => (
+        <Table dir="rtl">
+            <TableHeader>
+                <TableRow>
+                    <TableHead className="text-right">פעולות</TableHead>
+                    <TableHead className="text-right">שם העובד</TableHead>
+                    <TableHead className="text-right">ענף</TableHead>
+                    <TableHead className="text-right">תכנית</TableHead>
+                    <TableHead className="text-right">חברה</TableHead>
+                    <TableHead className="text-right">עלות חודשית</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {employees.map((emp) => (
+                    <TableRow key={emp.id}>
+                        <TableCell className="text-right">
+                            <div className="flex gap-2 justify-end">
+                                <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
+                                    <Eye className="w-4 h-4" />
+                                </Button>
+                                <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
+                                    <Edit className="w-4 h-4" />
+                                </Button>
+                            </div>
+                        </TableCell>
+                        <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
+                        <TableCell className="text-right">{getBranchName(emp.branch_id)}</TableCell>
+                        <TableCell className="text-right">{getProjectName(emp.project_id)}</TableCell>
+                        <TableCell className="text-right">{getEmployingCompanyName(emp.employing_company_id)}</TableCell>
+                        <TableCell className="text-right">{(emp.cost ?? 0).toLocaleString()} ₪</TableCell>
+                    </TableRow>
+                ))}
+            </TableBody>
+        </Table>
+    );
+
     const openEmployeeDetailDialog = (employee: Employee) => {
         setSelectedEmployee(employee);
         setIsViewDialogOpen(true);
@@ -2318,7 +2354,7 @@ export default function MovingSouth() {
                         <TabsContent value="dashboards" className="mt-6 space-y-6">
                             <Card className="glass-card">
                                 <CardHeader>
-                                    <CardTitle>התפלגות עובדים לפי החלטת רע״ן - מעבר דרומה</CardTitle>
+                                    <CardTitle>התפלגות עובדים לפי החלטת רע״ן</CardTitle>
                                 </CardHeader>
                                 <CardContent>
                                     <div className="h-80">
@@ -2685,7 +2721,7 @@ export default function MovingSouth() {
 
                     {/* Dashboard Detail Dialogs */}
                     <Dialog open={isDashboardAttritionRiskDialogOpen} onOpenChange={setIsDashboardAttritionRiskDialogOpen}>
-                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
                             <DialogHeader className="text-right">
                                 <DialogTitle className="flex items-center gap-2">
                                     <Users className="w-5 h-5 text-primary" />
@@ -2693,45 +2729,16 @@ export default function MovingSouth() {
                                 </DialogTitle>
                             </DialogHeader>
                             <ScrollArea className="flex-1 overflow-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-right">פעולות</TableHead>
-                                            <TableHead className="text-right">תעודת זהות</TableHead>
-                                            <TableHead className="text-right">שם העובד</TableHead>
-                                            <TableHead className="text-right">תכנית</TableHead>
-                                            <TableHead className="text-right">ענף</TableHead>
-                                            <TableHead className="text-right">קריטיות</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {employeesInSelectedDashboardAttritionRisk.map((emp) => (
-                                            <TableRow key={emp.id}>
-                                                <TableCell className="text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
-                                                            <Eye className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
-                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                                                <TableCell className="text-right">{emp.projectName}</TableCell>
-                                                <TableCell className="text-right">{emp.branchName}</TableCell>
-                                                <TableCell className="text-right">{getCriticalityLabel(emp.unit_criticality)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                {renderDrilldownTable(employeesInSelectedDashboardAttritionRisk)}
                             </ScrollArea>
+                            <DialogFooter className="p-4 border-t">
+                                <Button onClick={() => setIsDashboardAttritionRiskDialogOpen(false)}>סגור</Button>
+                            </DialogFooter>
                         </DialogContent>
                     </Dialog>
 
                     <Dialog open={isDashboardLeavingReasonDialogOpen} onOpenChange={setIsDashboardLeavingReasonDialogOpen}>
-                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
                             <DialogHeader className="text-right">
                                 <DialogTitle className="flex items-center gap-2">
                                     <Users className="w-5 h-5 text-primary" />
@@ -2739,45 +2746,16 @@ export default function MovingSouth() {
                                 </DialogTitle>
                             </DialogHeader>
                             <ScrollArea className="flex-1 overflow-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-right">פעולות</TableHead>
-                                            <TableHead className="text-right">תעודת זהות</TableHead>
-                                            <TableHead className="text-right">שם העובד</TableHead>
-                                            <TableHead className="text-right">תכנית</TableHead>
-                                            <TableHead className="text-right">ענף</TableHead>
-                                            <TableHead className="text-right">סיכוי לעזיבה</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {employeesInSelectedDashboardLeavingReason.map((emp) => (
-                                            <TableRow key={emp.id}>
-                                                <TableCell className="text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
-                                                            <Eye className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
-                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                                                <TableCell className="text-right">{emp.projectName}</TableCell>
-                                                <TableCell className="text-right">{emp.branchName}</TableCell>
-                                                <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                {renderDrilldownTable(employeesInSelectedDashboardLeavingReason)}
                             </ScrollArea>
+                            <DialogFooter className="p-4 border-t">
+                                <Button onClick={() => setIsDashboardLeavingReasonDialogOpen(false)}>סגור</Button>
+                            </DialogFooter>
                         </DialogContent>
                     </Dialog>
 
                     <Dialog open={isDashboardCompanyAttritionRiskDialogOpen} onOpenChange={setIsDashboardCompanyAttritionRiskDialogOpen}>
-                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
                             <DialogHeader className="text-right">
                                 <DialogTitle className="flex items-center gap-2">
                                     <Users className="w-5 h-5 text-primary" />
@@ -2785,39 +2763,7 @@ export default function MovingSouth() {
                                 </DialogTitle>
                             </DialogHeader>
                             <ScrollArea className="flex-1 overflow-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-right">פעולות</TableHead>
-                                            <TableHead className="text-right">תעודת זהות</TableHead>
-                                            <TableHead className="text-right">שם העובד</TableHead>
-                                            <TableHead className="text-right">תכנית</TableHead>
-                                            <TableHead className="text-right">ענף</TableHead>
-                                            <TableHead className="text-right">קריטיות</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {employeesInSelectedDashboardCompanyAttritionRisk.map((emp) => (
-                                            <TableRow key={emp.id}>
-                                                <TableCell className="text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
-                                                            <Eye className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
-                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                                                <TableCell className="text-right">{emp.projectName}</TableCell>
-                                                <TableCell className="text-right">{emp.branchName}</TableCell>
-                                                <TableCell className="text-right">{getCriticalityLabel(emp.unit_criticality)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                {renderDrilldownTable(employeesInSelectedDashboardCompanyAttritionRisk)}
                             </ScrollArea>
                             <DialogFooter className="p-4 border-t">
                                 <Button onClick={() => setIsDashboardCompanyAttritionRiskDialogOpen(false)}>סגור</Button>
@@ -2826,7 +2772,7 @@ export default function MovingSouth() {
                     </Dialog>
 
                     <Dialog open={isDashboardCriticalityDialogOpen} onOpenChange={setIsDashboardCriticalityDialogOpen}>
-                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
                             <DialogHeader className="text-right">
                                 <DialogTitle className="flex items-center gap-2">
                                     <Users className="w-5 h-5 text-primary" />
@@ -2834,48 +2780,16 @@ export default function MovingSouth() {
                                 </DialogTitle>
                             </DialogHeader>
                             <ScrollArea className="flex-1 overflow-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-right">פעולות</TableHead>
-                                            <TableHead className="text-right">תעודת זהות</TableHead>
-                                            <TableHead className="text-right">שם העובד</TableHead>
-                                            <TableHead className="text-right">תכנית</TableHead>
-                                            <TableHead className="text-right">ענף</TableHead>
-                                            <TableHead className="text-right">סיכוי לעזיבה</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {employeesInSelectedDashboardCriticality.map((emp) => (
-                                            <TableRow key={emp.id}>
-                                                <TableCell className="text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
-                                                            <Eye className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
-                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                                                <TableCell className="text-right">{emp.projectName}</TableCell>
-                                                <TableCell className="text-right">{emp.branchName}</TableCell>
-                                                <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                {renderDrilldownTable(employeesInSelectedDashboardCriticality)}
                             </ScrollArea>
                             <DialogFooter className="p-4 border-t">
                                 <Button onClick={() => setIsDashboardCriticalityDialogOpen(false)}>סגור</Button>
                             </DialogFooter>
                         </DialogContent>
-                    </Dialog >
+                    </Dialog>
 
                     <Dialog open={isDashboardAttentionScoreDialogOpen} onOpenChange={setIsDashboardAttentionScoreDialogOpen}>
-                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
                             <DialogHeader className="text-right">
                                 <DialogTitle className="flex items-center gap-2">
                                     <Users className="w-5 h-5 text-primary" />
@@ -2883,91 +2797,33 @@ export default function MovingSouth() {
                                 </DialogTitle>
                             </DialogHeader>
                             <ScrollArea className="flex-1 overflow-auto">
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-right">פעולות</TableHead>
-                                            <TableHead className="text-right">תעודת זהות</TableHead>
-                                            <TableHead className="text-right">שם העובד</TableHead>
-                                            <TableHead className="text-right">תכנית</TableHead>
-                                            <TableHead className="text-right">ענף</TableHead>
-                                            <TableHead className="text-right">קריטיות × סיכון</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {employeesInSelectedDashboardAttentionScore.map((emp) => (
-                                            <TableRow key={emp.id}>
-                                                <TableCell className="text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
-                                                            <Eye className="w-4 h-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
-                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                                                <TableCell className="text-right">{emp.projectName}</TableCell>
-                                                <TableCell className="text-right">{emp.branchName}</TableCell>
-                                                <TableCell className="text-right font-bold text-primary">{(emp.unit_criticality ?? 0) * (emp.attrition_risk ?? 0)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                {renderDrilldownTable(employeesInSelectedDashboardAttentionScore)}
                             </ScrollArea>
+                            <DialogFooter className="p-4 border-t">
+                                <Button onClick={() => setIsDashboardAttentionScoreDialogOpen(false)}>סגור</Button>
+                            </DialogFooter>
                         </DialogContent>
-                    </Dialog >
-                    <Dialog open={isDashboardCompanyAttritionRiskDialogOpen} onOpenChange={setIsDashboardCompanyAttritionRiskDialogOpen}>
-                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                    </Dialog>
+
+                    <Dialog open={isDashboardRaanDecisionDialogOpen} onOpenChange={setIsDashboardRaanDecisionDialogOpen}>
+                        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
                             <DialogHeader className="text-right">
                                 <DialogTitle className="flex items-center gap-2">
                                     <Users className="w-5 h-5 text-primary" />
-                                    עובדים לפי סיכוי לעזוב (חברה): {selectedDashboardCompanyAttritionRisk}
+                                    עובדים לפי החלטת רע״ן: {selectedDashboardRaanDecision || 'טרם הוחלט'}
                                 </DialogTitle>
                             </DialogHeader>
                             <ScrollArea className="flex-1 overflow-auto">
-                                <Table dir="rtl">
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-right">פעולות</TableHead>
-                                            <TableHead className="text-right">תעודת זהות</TableHead>
-                                            <TableHead className="text-right">שם העובד</TableHead>
-                                            <TableHead className="text-right">תכנית</TableHead>
-                                            <TableHead className="text-right">ענף</TableHead>
-                                            <TableHead className="text-right">סיכוי (חברה)</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {employeesInSelectedDashboardCompanyAttritionRisk.map((emp) => (
-                                            <TableRow key={emp.id}>
-                                                <TableCell className="text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
-                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                                                <TableCell className="text-right">{projects.find(p => p.id === emp.project_id)?.name || '-'}</TableCell>
-                                                <TableCell className="text-right">{branches.find(b => b.id === emp.branch_id)?.name || '-'}</TableCell>
-                                                <TableCell className="text-right">{getAttritionRiskLabel(emp.company_attrition_risk)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                {renderDrilldownTable(employeesInSelectedDashboardRaanDecision)}
                             </ScrollArea>
+                            <DialogFooter className="p-4 border-t">
+                                <Button onClick={() => setIsDashboardRaanDecisionDialogOpen(false)}>סגור</Button>
+                            </DialogFooter>
                         </DialogContent>
-                    </Dialog >
+                    </Dialog>
 
-                    {/* Matrix Dashboard Dialog */}
-                    < Dialog open={isMatrixDialogOpen} onOpenChange={setIsMatrixDialogOpen} >
-                        <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col">
+                    <Dialog open={isMatrixDialogOpen} onOpenChange={setIsMatrixDialogOpen}>
+                        <DialogContent className="max-w-5xl max-h-[90vh] flex flex-col">
                             <DialogHeader className="text-right">
                                 <DialogTitle className="flex items-center gap-2">
                                     <Users className="w-5 h-5 text-primary" />
@@ -2975,49 +2831,13 @@ export default function MovingSouth() {
                                 </DialogTitle>
                             </DialogHeader>
                             <ScrollArea className="flex-1 overflow-auto">
-                                <Table dir="rtl">
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead className="text-right">מידת קריטיות ליחידה</TableHead>
-                                            <TableHead className="text-right">סיכוי לעזיבה</TableHead>
-                                            <TableHead className="text-right">ענף</TableHead>
-                                            <TableHead className="text-right">תכנית</TableHead>
-                                            <TableHead className="text-right">שם העובד</TableHead>
-                                            <TableHead className="text-right">תעודת זהות</TableHead>
-                                            <TableHead className="text-right">פעולות</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {employeesInSelectedMatrixCell.map((emp) => (
-                                            <TableRow key={emp.id}>
-                                                <TableCell className="text-right text-primary">
-                                                    {getCriticalityLabel(emp.unit_criticality)}
-                                                </TableCell>
-                                                <TableCell className="text-right">{getAttritionRiskLabel(emp.attrition_risk)}</TableCell>
-                                                <TableCell className="text-right">{getBranchName(emp.branch_id)}</TableCell>
-                                                <TableCell className="text-right">{getProjectName(emp.project_id)}</TableCell>
-                                                <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                                                <TableCell className="text-right">{emp.id_number || '-'}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <div className="flex gap-2 justify-end">
-                                                        <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
-                                                            <Eye className="h-4 w-4" />
-                                                        </Button>
-                                                        <Button variant="ghost" size="icon" onClick={() => handleOpenEdit(emp)}>
-                                                            <Edit className="w-4 h-4" />
-                                                        </Button>
-                                                    </div>
-                                                </TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
+                                {renderDrilldownTable(employeesInSelectedMatrixCell)}
                             </ScrollArea>
                             <DialogFooter className="p-4 border-t">
                                 <Button onClick={() => setIsMatrixDialogOpen(false)}>סגור</Button>
                             </DialogFooter>
-                        </DialogContent >
-                    </Dialog >
+                        </DialogContent>
+                    </Dialog>
 
                 </div >
             )
