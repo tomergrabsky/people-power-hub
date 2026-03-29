@@ -29,7 +29,8 @@ import {
   DoorOpen,
   Bot,
   MapPin,
-  UserMinus
+  UserMinus,
+  Gavel
 } from 'lucide-react';
 
 const mainNavItems = [
@@ -50,6 +51,7 @@ const adminNavItems = [
   { title: 'ניהול ביצועים', url: '/admin/performance-levels', icon: BarChart3 },
   { title: 'חברות מעסיקות', url: '/admin/companies', icon: Building2 },
   { title: 'סיבות רצון לעזוב', url: '/admin/leaving-reasons', icon: DoorOpen },
+  { title: 'החלטות רע״ן - מעבר דרומה', url: '/admin/raan-decisions-moving-south', icon: Gavel },
   { title: 'ניהול משתמשים', url: '/admin/users', icon: UserCog },
 ];
 

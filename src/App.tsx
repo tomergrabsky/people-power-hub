@@ -20,6 +20,7 @@ import AdminBranches from "./pages/admin/Branches";
 import AdminSeniorityLevels from "./pages/admin/SeniorityLevels";
 import AdminLeavingReasons from "./pages/admin/LeavingReasons";
 import AdminPerformanceLevels from "./pages/admin/PerformanceLevels";
+import AdminRaanDecisionsMovingSouth from "./pages/admin/RaanDecisionsMovingSouth";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,6 +49,7 @@ const App = () => (
             <Route path="/admin/companies" element={<AdminEmployingCompanies />} />
             <Route path="/admin/leaving-reasons" element={<AdminLeavingReasons />} />
             <Route path="/admin/performance-levels" element={<AdminPerformanceLevels />} />
+            <Route path="/admin/raan-decisions-moving-south" element={<AdminRaanDecisionsMovingSouth />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

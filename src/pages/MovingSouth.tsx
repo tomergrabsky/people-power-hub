@@ -152,6 +152,7 @@ export default function MovingSouth() {
     const [seniorityLevels, setSeniorityLevels] = useState<NamedEntity[]>([]);
     const [leavingReasons, setLeavingReasons] = useState<NamedEntity[]>([]);
     const [performanceLevels, setPerformanceLevels] = useState<NamedEntity[]>([]);
+    const [raanDecisions, setRaanDecisions] = useState<NamedEntity[]>([]);
     const allowedProjects = useMemo(() => {
         if (isSuperAdmin) return projects;
         return projects.filter(p => allowedProjectIds?.includes(p.id));
@@ -304,7 +305,7 @@ export default function MovingSouth() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [employeesRes, projectsRes, rolesRes, companiesRes, branchesRes, seniorityRes, leavingReasonsRes, performanceLevelsRes] = await Promise.all([
+            const [employeesRes, projectsRes, rolesRes, companiesRes, branchesRes, seniorityRes, leavingReasonsRes, performanceLevelsRes, raanDecisionsRes] = await Promise.all([
                 getDocs(collection(db, 'employees')),
                 getDocs(collection(db, 'projects')),
                 getDocs(collection(db, 'job_roles')),
@@ -313,6 +314,7 @@ export default function MovingSouth() {
                 getDocs(collection(db, 'seniority_levels')),
                 getDocs(collection(db, 'leaving_reasons')),
                 getDocs(collection(db, 'performance_levels')),
+                getDocs(collection(db, 'raan_decisions_moving_south')),
             ]);
 
             const mapDocs = (snap: any) => snap.docs.map((doc: any) => ({ id: doc.id, ...doc.data() }));
@@ -334,6 +336,7 @@ export default function MovingSouth() {
             setSeniorityLevels(mapDocs(seniorityRes));
             setLeavingReasons(mapDocs(leavingReasonsRes));
             setPerformanceLevels(mapDocs(performanceLevelsRes));
+            setRaanDecisions(mapDocs(raanDecisionsRes).sort((a: any, b: any) => a.name.localeCompare(b.name, 'he')));
         } catch (error) {
             console.error('Error fetching data:', error);
             toast.error('שגיאה בטעינת נתונים');
@@ -818,7 +821,9 @@ export default function MovingSouth() {
         }
     };
 
-    const formFields = useMemo(() => [
+    const formFields = useMemo(() => {
+        const raanDecisionOptions = raanDecisions.map(d => ({ label: d.name, value: d.name }));
+        return [
         {
             id: 'row_fullname_jobrole',
             label: 'שם מלא ותפקיד',
@@ -1286,8 +1291,9 @@ export default function MovingSouth() {
                             <SelectValue placeholder="בחר החלטה" />
                         </SelectTrigger>
                         <SelectContent dir="rtl" drop-shadow-lg>
-                            <SelectItem value="סיום העסקה מיידית" className="text-right">סיום העסקה מיידית</SelectItem>
-                            <SelectItem value="סיום העסקה פעימה ב׳" className="text-right">סיום העסקה פעימה ב׳</SelectItem>
+                            {raanDecisionOptions.map((opt) => (
+                                <SelectItem key={opt.value} value={opt.value} className="text-right">{opt.label}</SelectItem>
+                            ))}
                         </SelectContent>
                     </Select>
                 </div>
@@ -1454,7 +1460,7 @@ export default function MovingSouth() {
                 </div>
             ),
         },
-    ], [formData, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, performanceLevels]);
+    ]}, [formData, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, performanceLevels, raanDecisions]);
 
     const viewFormFields = useMemo(() => [
         {
