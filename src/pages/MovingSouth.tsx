@@ -187,6 +187,7 @@ export default function MovingSouth() {
     const [selectedDashboardCriticality, setSelectedDashboardCriticality] = useState<string | null>(null);
     const [isDashboardCriticalityDialogOpen, setIsDashboardCriticalityDialogOpen] = useState(false);
     const [dashboardFilterBranch, setDashboardFilterBranch] = useState<string[]>([]);
+    const [dashboardFilterProject, setDashboardFilterProject] = useState<string[]>([]);
     const [selectedMatrixCell, setSelectedMatrixCell] = useState<{ criticality: number; risk: number } | null>(null);
     const [isMatrixDialogOpen, setIsMatrixDialogOpen] = useState(false);
     const [selectedDashboardCompanyDrilldown, setSelectedDashboardCompanyDrilldown] = useState<string | null>(null);
@@ -471,12 +472,21 @@ export default function MovingSouth() {
     }, [allEmployees, jobRoles, branches, projects, employingCompanies, leavingReasons, movingSouthSearch, movingSouthSortConfig, movingSouthFilterProject, movingSouthFilterBranch, movingSouthFilterCompany, movingSouthFilterCriticality, movingSouthFilterAttritionRisk, movingSouthFilterReplacement]);
 
     const filteredDashboardData = useMemo(() => {
-        if (dashboardFilterBranch.length === 0) return movingSouthTableData;
-        return movingSouthTableData.filter(emp => {
-            const branchId = emp.branch_id || 'none';
-            return dashboardFilterBranch.includes(branchId);
-        });
-    }, [movingSouthTableData, dashboardFilterBranch]);
+        let data = movingSouthTableData;
+        if (dashboardFilterBranch.length > 0) {
+            data = data.filter(emp => {
+                const branchId = emp.branch_id || 'none';
+                return dashboardFilterBranch.includes(branchId);
+            });
+        }
+        if (dashboardFilterProject.length > 0) {
+            data = data.filter(emp => {
+                const projectId = emp.project_id || 'none';
+                return dashboardFilterProject.includes(projectId);
+            });
+        }
+        return data;
+    }, [movingSouthTableData, dashboardFilterBranch, dashboardFilterProject]);
 
     // Dashboard Data Calculations
     const employeesByAttritionRisk = useMemo(() => {
@@ -2361,17 +2371,27 @@ export default function MovingSouth() {
                                             selected={dashboardFilterBranch}
                                             onChange={setDashboardFilterBranch}
                                             placeholder="סינון לפי ענף"
-                                            className="w-[200px]"
+                                            className="w-[180px]"
+                                        />
+                                        <MultiSelect
+                                            options={projects.map(p => ({ label: p.name, value: p.id }))}
+                                            selected={dashboardFilterProject}
+                                            onChange={setDashboardFilterProject}
+                                            placeholder="סינון לפי תכנית"
+                                            className="w-[180px]"
                                         />
                                     </div>
-                                    {dashboardFilterBranch.length > 0 && (
+                                    {(dashboardFilterBranch.length > 0 || dashboardFilterProject.length > 0) && (
                                         <Button
                                             variant="ghost"
                                             size="sm"
-                                            onClick={() => setDashboardFilterBranch([])}
+                                            onClick={() => {
+                                                setDashboardFilterBranch([]);
+                                                setDashboardFilterProject([]);
+                                            }}
                                             className="h-8 px-2 text-muted-foreground hover:text-foreground"
                                         >
-                                            נקה סינון
+                                            נקה סינונים
                                             <X className="mr-2 h-4 w-4" />
                                         </Button>
                                     )}
