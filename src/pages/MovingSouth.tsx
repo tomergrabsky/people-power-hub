@@ -765,17 +765,22 @@ export default function MovingSouth() {
         <Table dir="rtl">
             <TableHeader>
                 <TableRow>
-                    <TableHead className="text-right">פעולות</TableHead>
-                    <TableHead className="text-right">שם העובד</TableHead>
-                    <TableHead className="text-right">ענף</TableHead>
-                    <TableHead className="text-right">תכנית</TableHead>
-                    <TableHead className="text-right">חברה</TableHead>
-                    <TableHead className="text-right">עלות חודשית</TableHead>
+                    <TableHead className="text-right font-bold">שם העובד</TableHead>
+                    <TableHead className="text-right font-bold">ענף</TableHead>
+                    <TableHead className="text-right font-bold">תכנית</TableHead>
+                    <TableHead className="text-right font-bold">חברה</TableHead>
+                    <TableHead className="text-right font-bold">עלות חודשית</TableHead>
+                    <TableHead className="text-right font-bold">פעולות</TableHead>
                 </TableRow>
             </TableHeader>
             <TableBody>
                 {employees.map((emp) => (
                     <TableRow key={emp.id}>
+                        <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
+                        <TableCell className="text-right">{getBranchName(emp.branch_id)}</TableCell>
+                        <TableCell className="text-right">{getProjectName(emp.project_id)}</TableCell>
+                        <TableCell className="text-right">{getEmployingCompanyName(emp.employing_company_id)}</TableCell>
+                        <TableCell className="text-right">{(emp.cost ?? 0).toLocaleString()} ₪</TableCell>
                         <TableCell className="text-right">
                             <div className="flex gap-2 justify-end">
                                 <Button variant="ghost" size="icon" onClick={() => openEmployeeDetailDialog(emp)}>
@@ -786,11 +791,6 @@ export default function MovingSouth() {
                                 </Button>
                             </div>
                         </TableCell>
-                        <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
-                        <TableCell className="text-right">{getBranchName(emp.branch_id)}</TableCell>
-                        <TableCell className="text-right">{getProjectName(emp.project_id)}</TableCell>
-                        <TableCell className="text-right">{getEmployingCompanyName(emp.employing_company_id)}</TableCell>
-                        <TableCell className="text-right">{(emp.cost ?? 0).toLocaleString()} ₪</TableCell>
                     </TableRow>
                 ))}
             </TableBody>
