@@ -130,6 +130,9 @@ interface Employee {
     performance_level_id?: string | null;
     performance_update_date?: string | null;
     our_sourcing?: boolean | null;
+    hr_recommendation?: string | null;
+    raan_decision?: string | null;
+    raan_decision_moving_south?: string | null;
 }
 
 interface NamedEntity {
@@ -206,6 +209,9 @@ export default function MovingSouth() {
         'row_replacement_needed',
         'row_attrition_risk_company',
         'row_company_retention_plan',
+        'row_hr_recommendation',
+        'row_raan_decision',
+        'row_raan_status',
         'row_cost',
         'row_salary_estimates',
         'row_salary_percentage_date',
@@ -245,6 +251,9 @@ export default function MovingSouth() {
         company_attrition_risk: '',
         performance_level_id: '',
         performance_update_date: '',
+        hr_recommendation: '',
+        raan_decision: '',
+        raan_decision_moving_south: '',
     });
 
 
@@ -684,6 +693,9 @@ export default function MovingSouth() {
             'סיבת רצון לעזוב (מפקדים) - קטגוריה': emp.leavingReasonName,
             'סיבת רצון לעזוב (מפקדים) - מלל חופשי': emp.attrition_risk_reason || '-',
             'תכנית שימור (יחידה)': emp.retention_plan || '-',
+            'המלצת HR': emp.hr_recommendation || '-',
+            'החלטת רע״ן - מלל חופשי': emp.raan_decision || '-',
+            'החלטת רע״ן - מעבר דרומה': emp.raan_decision_moving_south || '-',
             'סיכוי לעזוב (חברה)': emp.company_attrition_risk || 0,
             'התייחסות למעבר דרומה (חברה)': emp.company_retention_plan || '-',
         }));
@@ -712,6 +724,9 @@ export default function MovingSouth() {
             salary_raise_percentage: emp.salary_raise_percentage?.toString() || '',
             revolving_door: emp.revolving_door?.toString() || '',
             our_sourcing: emp.our_sourcing?.toString() || '',
+            hr_recommendation: emp.hr_recommendation || '',
+            raan_decision: emp.raan_decision || '',
+            raan_decision_moving_south: emp.raan_decision_moving_south || '',
         });
         setIsEditDialogOpen(true);
     };
@@ -1168,6 +1183,62 @@ export default function MovingSouth() {
                         onChange={(e) => setFormData({ ...formData, commander_summary_and_status: e.target.value })}
                         placeholder="הזן סיכום מפקד..."
                     />
+                </div>
+            ),
+        },
+        {
+            id: 'row_hr_recommendation',
+            label: 'המלצת HR',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="hr_recommendation">המלצת HR</Label>
+                    <Input
+                        id="hr_recommendation"
+                        className="text-right"
+                        value={formData.hr_recommendation || ''}
+                        onChange={(e) => setFormData({ ...formData, hr_recommendation: e.target.value })}
+                        placeholder="הזן המלצת HR..."
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_raan_decision',
+            label: 'החלטת רע״ן',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="raan_decision">החלטת רע״ן (מלל חופשי)</Label>
+                    <Input
+                        id="raan_decision"
+                        className="text-right"
+                        value={formData.raan_decision || ''}
+                        onChange={(e) => setFormData({ ...formData, raan_decision: e.target.value })}
+                        placeholder="הזן החלטת רע״ן..."
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_raan_status',
+            label: 'החלטת רע״ן - מעבר דרומה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label htmlFor="raan_decision_moving_south">החלטת רע״ן - מעבר דרומה</Label>
+                    <Select
+                        value={formData.raan_decision_moving_south}
+                        onValueChange={(value) => setFormData({ ...formData, raan_decision_moving_south: value })}
+                    >
+                        <SelectTrigger className="text-right" dir="rtl">
+                            <SelectValue placeholder="בחר החלטה" />
+                        </SelectTrigger>
+                        <SelectContent dir="rtl" drop-shadow-lg>
+                            <SelectItem value="סיום העסקה מיידית" className="text-right">סיום העסקה מיידית</SelectItem>
+                            <SelectItem value="סיום העסקה פעימה ב׳" className="text-right">סיום העסקה פעימה ב׳</SelectItem>
+                        </SelectContent>
+                    </Select>
                 </div>
             ),
         },
@@ -1637,6 +1708,51 @@ export default function MovingSouth() {
             ),
         },
         {
+            id: 'row_hr_recommendation',
+            label: 'המלצת HR',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>המלצת HR</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={(selectedEmployee as any)?.hr_recommendation || '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_raan_decision',
+            label: 'החלטת רע״ן',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>החלטת רע״ן (מלל חופשי)</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={(selectedEmployee as any)?.raan_decision || '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
+            id: 'row_raan_status',
+            label: 'החלטת רע״ן - מעבר דרומה',
+            isManagerOnly: true,
+            component: (
+                <div className="space-y-2 text-right">
+                    <Label>החלטת רע״ן - מעבר דרומה</Label>
+                    <Input
+                        className="text-right bg-muted"
+                        value={(selectedEmployee as any)?.raan_decision_moving_south || '-'}
+                        disabled
+                    />
+                </div>
+            ),
+        },
+        {
             id: 'row_replacement_needed',
             label: 'לגייס במקומו?',
             isManagerOnly: true,
@@ -1797,8 +1913,11 @@ export default function MovingSouth() {
             'row_risk_reason_unit',
             'row_attrition_reason',
             'row_retention_plan',
-            'row_commander_summary',
-            'row_replacement_needed'
+            'row_hr_recommendation',
+            'row_raan_decision',
+            'row_raan_status',
+            'row_replacement_needed',
+            'row_commander_summary'
         ];
 
         const retentionCompanyRows = [
