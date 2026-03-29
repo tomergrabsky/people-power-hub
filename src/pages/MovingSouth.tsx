@@ -188,6 +188,8 @@ export default function MovingSouth() {
     const [dashboardFilterBranch, setDashboardFilterBranch] = useState<string[]>([]);
     const [selectedMatrixCell, setSelectedMatrixCell] = useState<{ criticality: number; risk: number } | null>(null);
     const [isMatrixDialogOpen, setIsMatrixDialogOpen] = useState(false);
+    const [selectedDashboardCompanyDrilldown, setSelectedDashboardCompanyDrilldown] = useState<string | null>(null);
+    const [isDashboardCompanyDialogOpen, setIsDashboardCompanyDialogOpen] = useState(false);
 
 
 
@@ -550,6 +552,17 @@ export default function MovingSouth() {
             .sort((a, b) => b.value - a.value);
     }, [filteredDashboardData, leavingReasons]);
 
+    const employeesByCompany = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredDashboardData.forEach((emp) => {
+            const companyName = employingCompanies.find((c) => c.id === emp.employing_company_id)?.name || 'לא מוגדר';
+            counts[companyName] = (counts[companyName] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [filteredDashboardData, employingCompanies]);
+
     const employeesByAttentionScore = useMemo(() => {
         const counts: Record<number, number> = {};
         for (let i = 0; i <= 25; i++) {
@@ -645,6 +658,14 @@ export default function MovingSouth() {
         ).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
     }, [filteredDashboardData, selectedMatrixCell]);
 
+    const employeesInSelectedDashboardCompany = useMemo(() => {
+        if (!selectedDashboardCompanyDrilldown) return [];
+        return filteredDashboardData.filter(emp => {
+            const companyName = employingCompanies.find((c) => c.id === emp.employing_company_id)?.name || 'לא מוגדר';
+            return companyName === selectedDashboardCompanyDrilldown;
+        }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
+    }, [filteredDashboardData, selectedDashboardCompanyDrilldown, employingCompanies]);
+
     const handleAttritionRiskClick = (riskLabel: string) => {
         setSelectedDashboardAttritionRisk(riskLabel);
         setIsDashboardAttritionRiskDialogOpen(true);
@@ -668,6 +689,11 @@ export default function MovingSouth() {
     const handleCriticalityClick = (criticalityLabel: string) => {
         setSelectedDashboardCriticality(criticalityLabel);
         setIsDashboardCriticalityDialogOpen(true);
+    };
+
+    const handleCompanyClick = (companyName: string) => {
+        setSelectedDashboardCompanyDrilldown(companyName);
+        setIsDashboardCompanyDialogOpen(true);
     };
 
     const toggleSort = (key: string) => {
@@ -2539,6 +2565,43 @@ export default function MovingSouth() {
                                                     radius={[4, 4, 0, 0]}
                                                     cursor="pointer"
                                                     onClick={(data) => handleLeavingReasonClick(data.name)}
+                                                />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="glass-card">
+                                <CardHeader>
+                                    <CardTitle>התפלגות עובדים לפי חברה מעסיקה</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-80">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={employeesByCompany}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                <Tooltip
+                                                    content={({ active, payload, label }) => {
+                                                        if (active && payload && payload.length) {
+                                                            return (
+                                                                <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-right">
+                                                                    <p className="font-medium text-foreground">חברה: {label}</p>
+                                                                    <p className="text-primary">{payload[0].value} עובדים</p>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }}
+                                                />
+                                                <Bar
+                                                    dataKey="value"
+                                                    fill="hsl(140, 70%, 50%)"
+                                                    radius={[4, 4, 0, 0]}
+                                                    cursor="pointer"
+                                                    onClick={(data) => handleCompanyClick(data.name)}
                                                 />
                                             </BarChart>
                                         </ResponsiveContainer>
