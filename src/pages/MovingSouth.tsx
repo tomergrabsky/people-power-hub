@@ -2352,6 +2352,35 @@ export default function MovingSouth() {
                         </TabsContent>
 
                         <TabsContent value="dashboards" className="mt-6 space-y-6">
+                            <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg">
+                                <div className="flex flex-wrap items-center gap-4">
+                                    <div className="flex items-center gap-2">
+                                        <Filter className="h-4 w-4 text-muted-foreground mr-1" />
+                                        <MultiSelect
+                                            options={branches.map(b => ({ label: b.name, value: b.id }))}
+                                            selected={dashboardFilterBranch}
+                                            onChange={setDashboardFilterBranch}
+                                            placeholder="סינון לפי ענף"
+                                            className="w-[200px]"
+                                        />
+                                    </div>
+                                    {dashboardFilterBranch.length > 0 && (
+                                        <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            onClick={() => setDashboardFilterBranch([])}
+                                            className="h-8 px-2 text-muted-foreground hover:text-foreground"
+                                        >
+                                            נקה סינון
+                                            <X className="mr-2 h-4 w-4" />
+                                        </Button>
+                                    )}
+                                </div>
+                                <div className="text-sm text-muted-foreground px-2">
+                                    מציג נתוני {filteredDashboardData.length} עובדים
+                                </div>
+                            </div>
+
                             <Card className="glass-card">
                                 <CardHeader>
                                     <CardTitle>התפלגות עובדים לפי החלטת רע״ן</CardTitle>
@@ -2388,35 +2417,6 @@ export default function MovingSouth() {
                                     </div>
                                 </CardContent>
                             </Card>
-
-                            <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg">
-                                <div className="flex flex-wrap items-center gap-4">
-                                    <div className="flex items-center gap-2">
-                                        <Filter className="h-4 w-4 text-muted-foreground mr-1" />
-                                        <MultiSelect
-                                            options={branches.map(b => ({ label: b.name, value: b.id }))}
-                                            selected={dashboardFilterBranch}
-                                            onChange={setDashboardFilterBranch}
-                                            placeholder="סינון לפי ענף"
-                                            className="w-[200px]"
-                                        />
-                                    </div>
-                                    {dashboardFilterBranch.length > 0 && (
-                                        <Button
-                                            variant="ghost"
-                                            size="sm"
-                                            onClick={() => setDashboardFilterBranch([])}
-                                            className="h-8 px-2 text-muted-foreground hover:text-foreground"
-                                        >
-                                            נקה סינון
-                                            <X className="mr-2 h-4 w-4" />
-                                        </Button>
-                                    )}
-                                </div>
-                                <div className="text-sm text-muted-foreground px-2">
-                                    מציג נתוני {filteredDashboardData.length} עובדים
-                                </div>
-                            </div>
 
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                                 <Card className="glass-card">
