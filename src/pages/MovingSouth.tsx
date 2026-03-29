@@ -190,6 +190,8 @@ export default function MovingSouth() {
     const [isMatrixDialogOpen, setIsMatrixDialogOpen] = useState(false);
     const [selectedDashboardCompanyDrilldown, setSelectedDashboardCompanyDrilldown] = useState<string | null>(null);
     const [isDashboardCompanyDialogOpen, setIsDashboardCompanyDialogOpen] = useState(false);
+    const [selectedDashboardRaanDecision, setSelectedDashboardRaanDecision] = useState<string | null>(null);
+    const [isDashboardRaanDecisionDialogOpen, setIsDashboardRaanDecisionDialogOpen] = useState(false);
 
 
 
@@ -551,7 +553,6 @@ export default function MovingSouth() {
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
     }, [filteredDashboardData, leavingReasons]);
-
     const employeesByCompany = useMemo(() => {
         const counts: Record<string, number> = {};
         filteredDashboardData.forEach((emp) => {
@@ -562,6 +563,17 @@ export default function MovingSouth() {
             .map(([name, value]) => ({ name, value }))
             .sort((a, b) => b.value - a.value);
     }, [filteredDashboardData, employingCompanies]);
+
+    const employeesByRaanDecision = useMemo(() => {
+        const counts: Record<string, number> = {};
+        filteredDashboardData.forEach((emp) => {
+            const decision = emp.raan_decision_moving_south || 'טרם הוחלט';
+            counts[decision] = (counts[decision] || 0) + 1;
+        });
+        return Object.entries(counts)
+            .map(([name, value]) => ({ name, value }))
+            .sort((a, b) => b.value - a.value);
+    }, [filteredDashboardData]);
 
     const employeesByAttentionScore = useMemo(() => {
         const counts: Record<number, number> = {};
@@ -666,6 +678,14 @@ export default function MovingSouth() {
         }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
     }, [filteredDashboardData, selectedDashboardCompanyDrilldown, employingCompanies]);
 
+    const employeesInSelectedDashboardRaanDecision = useMemo(() => {
+        if (!selectedDashboardRaanDecision) return [];
+        return filteredDashboardData.filter(emp => {
+            const decision = emp.raan_decision_moving_south || 'טרם הוחלט';
+            return decision === selectedDashboardRaanDecision;
+        }).sort((a, b) => a.full_name.localeCompare(b.full_name, 'he'));
+    }, [filteredDashboardData, selectedDashboardRaanDecision]);
+
     const handleAttritionRiskClick = (riskLabel: string) => {
         setSelectedDashboardAttritionRisk(riskLabel);
         setIsDashboardAttritionRiskDialogOpen(true);
@@ -694,6 +714,11 @@ export default function MovingSouth() {
     const handleCompanyClick = (companyName: string) => {
         setSelectedDashboardCompanyDrilldown(companyName);
         setIsDashboardCompanyDialogOpen(true);
+    };
+
+    const handleRaanDecisionClick = (decision: string) => {
+        setSelectedDashboardRaanDecision(decision);
+        setIsDashboardRaanDecisionDialogOpen(true);
     };
 
     const toggleSort = (key: string) => {
@@ -2285,6 +2310,43 @@ export default function MovingSouth() {
                         </TabsContent>
 
                         <TabsContent value="dashboards" className="mt-6 space-y-6">
+                            <Card className="glass-card">
+                                <CardHeader>
+                                    <CardTitle>התפלגות עובדים לפי החלטת רע״ן - מעבר דרומה</CardTitle>
+                                </CardHeader>
+                                <CardContent>
+                                    <div className="h-80">
+                                        <ResponsiveContainer width="100%" height="100%">
+                                            <BarChart data={employeesByRaanDecision}>
+                                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
+                                                <Tooltip
+                                                    content={({ active, payload, label }) => {
+                                                        if (active && payload && payload.length) {
+                                                            return (
+                                                                <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-right">
+                                                                    <p className="font-medium text-foreground">החלטה: {label}</p>
+                                                                    <p className="text-primary">{payload[0].value} עובדים</p>
+                                                                </div>
+                                                            );
+                                                        }
+                                                        return null;
+                                                    }}
+                                                />
+                                                <Bar
+                                                    dataKey="value"
+                                                    fill="hsl(210, 70%, 50%)"
+                                                    radius={[4, 4, 0, 0]}
+                                                    cursor="pointer"
+                                                    onClick={(data) => handleRaanDecisionClick(data.name)}
+                                                />
+                                            </BarChart>
+                                        </ResponsiveContainer>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
                             <div className="flex flex-wrap items-center justify-between gap-4 p-4 bg-muted/30 rounded-lg">
                                 <div className="flex flex-wrap items-center gap-4">
                                     <div className="flex items-center gap-2">
@@ -2572,42 +2634,7 @@ export default function MovingSouth() {
                                 </CardContent>
                             </Card>
 
-                            <Card className="glass-card">
-                                <CardHeader>
-                                    <CardTitle>התפלגות עובדים לפי חברה מעסיקה</CardTitle>
-                                </CardHeader>
-                                <CardContent>
-                                    <div className="h-80">
-                                        <ResponsiveContainer width="100%" height="100%">
-                                            <BarChart data={employeesByCompany}>
-                                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} />
-                                                <Tooltip
-                                                    content={({ active, payload, label }) => {
-                                                        if (active && payload && payload.length) {
-                                                            return (
-                                                                <div className="bg-popover border border-border rounded-lg p-3 shadow-lg text-right">
-                                                                    <p className="font-medium text-foreground">חברה: {label}</p>
-                                                                    <p className="text-primary">{payload[0].value} עובדים</p>
-                                                                </div>
-                                                            );
-                                                        }
-                                                        return null;
-                                                    }}
-                                                />
-                                                <Bar
-                                                    dataKey="value"
-                                                    fill="hsl(140, 70%, 50%)"
-                                                    radius={[4, 4, 0, 0]}
-                                                    cursor="pointer"
-                                                    onClick={(data) => handleCompanyClick(data.name)}
-                                                />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </div>
-                                </CardContent>
-                            </Card>
+
 
                         </TabsContent>
                     </Tabs>
