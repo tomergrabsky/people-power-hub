@@ -116,6 +116,7 @@ interface Employee {
   left_date?: string;
   left_reason?: string;
   left_notes?: string;
+  job_percentage?: number | null;
 }
 
 interface JobRole {
@@ -224,6 +225,7 @@ export default function Employees() {
     created_at: false,
     updated_at: false,
     created_by: false,
+    job_percentage: true,
   });
 
   const columnLabels: Record<string, string> = {
@@ -267,6 +269,7 @@ export default function Employees() {
     left_date: 'תאריך עזיבה',
     left_reason: 'סיבת עזיבה',
     left_notes: 'הערות עזיבה',
+    job_percentage: 'אחוז משרה',
   };
 
   // Manager-only columns
@@ -294,7 +297,7 @@ export default function Employees() {
     'professional_experience_years', 'organization_experience_years', 'city',
     'start_date', 'cost', 'attrition_risk', 'attrition_risk_reason',
     'unit_criticality', 'salary_raise_date', 'salary_raise_percentage',
-    'created_at', 'updated_at', 'created_by', 'our_sourcing', 'leaving_reason_id', 'performance_level_id', 'performance_update_date', 'replacement_needed', 'phone'
+    'created_at', 'updated_at', 'created_by', 'our_sourcing', 'leaving_reason_id', 'performance_level_id', 'performance_update_date', 'replacement_needed', 'phone', 'job_percentage'
   ], []);
 
   const { columnOrder, updateOrder: updateColumnOrder, resetOrder: resetColumnOrder } = useColumnOrder('employees', defaultColumnOrder);
@@ -403,6 +406,7 @@ export default function Employees() {
     performance_level_id: '',
     performance_update_date: '',
     replacement_needed: '',
+    job_percentage: '',
   });
 
   const [isLeaveDialogOpen, setIsLeaveDialogOpen] = useState(false);
@@ -717,6 +721,7 @@ export default function Employees() {
       performance_level_id: '',
       performance_update_date: '',
       replacement_needed: '',
+      job_percentage: '',
     });
     setActiveTab('general');
   };
@@ -750,6 +755,7 @@ export default function Employees() {
       leaving_reason_id: formData.leaving_reason_id || null,
       performance_level_id: formData.performance_level_id || null,
       performance_update_date: formData.performance_update_date || null,
+      job_percentage: formData.job_percentage ? parseInt(formData.job_percentage) : null,
     };
 
     // Manager-only fields
@@ -807,6 +813,7 @@ export default function Employees() {
       leaving_reason_id: formData.leaving_reason_id || null,
       performance_level_id: formData.performance_level_id || null,
       performance_update_date: formData.performance_update_date || null,
+      job_percentage: formData.job_percentage ? parseInt(formData.job_percentage) : null,
     };
 
     if (isManager) {
@@ -897,6 +904,7 @@ export default function Employees() {
       performance_level_id: employee.performance_level_id || '',
       performance_update_date: employee.performance_update_date || '',
       replacement_needed: (employee as any).replacement_needed || '',
+      job_percentage: employee.job_percentage?.toString() || '',
     });
     setIsEditDialogOpen(true);
     setActiveTab('general');
@@ -999,6 +1007,9 @@ export default function Employees() {
           case 'leaving_reason_id':
             row[label] = getLeavingReasonName(employee.leaving_reason_id);
             break;
+          case 'job_percentage':
+            row[label] = employee.job_percentage ? `${employee.job_percentage}%` : '-';
+            break;
           default:
             row[label] = (employee as unknown as Record<string, string | number | null>)[col] ?? '-';
         }
@@ -1064,6 +1075,19 @@ export default function Employees() {
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="space-y-2 text-right">
+            <Label htmlFor="job_percentage">אחוז משרה</Label>
+            <Input
+              id="job_percentage"
+              className="text-right"
+              type="number"
+              min="1"
+              max="100"
+              value={formData.job_percentage}
+              onChange={(e) => setFormData({ ...formData, job_percentage: e.target.value })}
+              placeholder="1-100"
+            />
           </div>
         </div>
       ),
@@ -1659,6 +1683,14 @@ export default function Employees() {
             <Input
               className="text-right bg-muted"
               value={getRoleName(selectedEmployee?.job_role_id || null)}
+              disabled
+            />
+          </div>
+          <div className="space-y-2 text-right">
+            <Label>אחוז משרה</Label>
+            <Input
+              className="text-right bg-muted"
+              value={selectedEmployee?.job_percentage ? `${selectedEmployee.job_percentage}%` : '-'}
               disabled
             />
           </div>
@@ -2589,6 +2621,8 @@ export default function Employees() {
                                     return <TableCell key={col}>{employee.our_sourcing === true ? 'כן' : employee.our_sourcing === false ? 'לא' : '-'}</TableCell>;
                                   case 'leaving_reason_id':
                                     return <TableCell key={col}>{getLeavingReasonName(employee.leaving_reason_id)}</TableCell>;
+                                  case 'job_percentage':
+                                    return <TableCell key={col} dir="ltr" className="text-left">{employee.job_percentage ? `${employee.job_percentage}%` : '-'}</TableCell>;
                                   default:
                                     return null;
                                 }
