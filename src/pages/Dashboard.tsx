@@ -31,6 +31,7 @@ interface Employee {
   birth_date: string | null;
   start_date: string;
   cost: number | null;
+  project_id?: string | null;
 }
 
 export default function Dashboard() {
@@ -63,8 +64,11 @@ export default function Dashboard() {
   const fetchStats = async () => {
     setLoading(true);
     try {
-      const snap = await getDocs(collection(db, 'employees'));
-      let fetchedEmployees = (snap.docs.map(doc => ({
+      const [empSnap] = await Promise.all([
+        getDocs(collection(db, 'employees')),
+      ]);
+
+      let fetchedEmployees = (empSnap.docs.map(doc => ({
         id: doc.id,
         ...doc.data()
       })) as any[]).filter(emp => !emp.is_left);
@@ -334,7 +338,6 @@ export default function Dashboard() {
         )}
 
         <div className="grid grid-cols-1 gap-6">
-
           <Card className="glass-card">
             <CardHeader>
               <CardTitle>פעולות מהירות</CardTitle>

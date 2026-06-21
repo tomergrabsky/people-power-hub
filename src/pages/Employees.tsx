@@ -96,6 +96,7 @@ interface Employee {
   created_by?: string | null;
   employing_company_id?: string;
   branch_id?: string;
+  section_id?: string;
   seniority_level_id?: string;
   attrition_risk?: number | null;
   attrition_risk_reason?: string | null;
@@ -144,6 +145,11 @@ interface Branch {
   name: string;
 }
 
+interface Section {
+  id: string;
+  name: string;
+}
+
 interface SeniorityLevel {
   id: string;
   name: string;
@@ -167,6 +173,7 @@ export default function Employees() {
   const [recruitmentPlans, setRecruitmentPlans] = useState<RecruitmentPlan[]>([]);
   const [employingCompanies, setEmployingCompanies] = useState<EmployingCompany[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [sections, setSections] = useState<Section[]>([]);
   const [seniorityLevels, setSeniorityLevels] = useState<SeniorityLevel[]>([]);
   const [leavingReasons, setLeavingReasons] = useState<LeavingReason[]>([]);
   const [performanceLevels, setPerformanceLevels] = useState<PerformanceLevel[]>([]);
@@ -182,6 +189,7 @@ export default function Employees() {
   const [filterRole, setFilterRole] = useState<string[]>([]);
   const [filterCity, setFilterCity] = useState<string>('');
   const [filterBranch, setFilterBranch] = useState<string[]>([]);
+  const [filterSection, setFilterSection] = useState<string[]>([]);
   const [filterEmployingCompany, setFilterEmployingCompany] = useState<string[]>([]);
   const [filterSeniority, setFilterSeniority] = useState<string[]>([]);
   const [filterAttritionRisk, setFilterAttritionRisk] = useState<string[]>([]);
@@ -203,7 +211,8 @@ export default function Employees() {
     job_role_id: true,
     project_id: true,
     recruitment_plan_id: false,
-    branch_id: false,
+    branch_id: true,
+    section_id: true,
     employing_company_id: false,
     seniority_level_id: false,
     professional_experience_years: true,
@@ -237,6 +246,7 @@ export default function Employees() {
     project_id: 'תכנית',
     recruitment_plan_id: 'קבלן משנה/תכנית גיוס',
     branch_id: 'ענף',
+    section_id: 'מדור',
     employing_company_id: 'חברה מעסיקה',
     seniority_level_id: 'סניוריטי',
     professional_experience_years: 'ותק במקצוע',
@@ -293,7 +303,7 @@ export default function Employees() {
   // Default column order
   const defaultColumnOrder = useMemo(() => [
     'full_name', 'id', 'id_number', 'birth_date', 'job_role_id', 'project_id', 'recruitment_plan_id',
-    'branch_id', 'employing_company_id', 'seniority_level_id',
+    'branch_id', 'section_id', 'employing_company_id', 'seniority_level_id',
     'professional_experience_years', 'organization_experience_years', 'city',
     'start_date', 'cost', 'attrition_risk', 'attrition_risk_reason',
     'unit_criticality', 'salary_raise_date', 'salary_raise_percentage',
@@ -386,6 +396,7 @@ export default function Employees() {
     cost: '',
     employing_company_id: '',
     branch_id: '',
+    section_id: '',
     phone: '',
     emergency_phone: '',
     seniority_level_id: '',
@@ -464,7 +475,7 @@ export default function Employees() {
     try {
       const [
         employeesSnap, rolesSnap, projectsSnap,
-        recruitmentPlansSnap, companiesSnap, branchesSnap, senioritySnap, leavingSnap, performanceSnap
+        recruitmentPlansSnap, companiesSnap, branchesSnap, sectionsSnap, senioritySnap, leavingSnap, performanceSnap
       ] = await Promise.all([
         getDocs(collection(db, 'employees')),
         getDocs(collection(db, 'job_roles')),
@@ -472,6 +483,7 @@ export default function Employees() {
         getDocs(collection(db, 'recruitment_plans')),
         getDocs(collection(db, 'employing_companies')),
         getDocs(collection(db, 'branches')),
+        getDocs(collection(db, 'sections')),
         getDocs(collection(db, 'seniority_levels')),
         getDocs(collection(db, 'leaving_reasons')),
         getDocs(collection(db, 'performance_levels'))
@@ -509,6 +521,7 @@ export default function Employees() {
       setProjects(mapDocs(projectsSnap));
       setEmployingCompanies(mapDocs(companiesSnap));
       setBranches(mapDocs(branchesSnap));
+      setSections(mapDocs(sectionsSnap));
       setSeniorityLevels(mapDocs(senioritySnap));
       setLeavingReasons(mapDocs(leavingSnap));
       setPerformanceLevels(mapDocs(performanceSnap).sort((a: any, b: any) => a.name.localeCompare(b.name, 'he', { numeric: true })));
@@ -541,6 +554,12 @@ export default function Employees() {
     if (!branchId) return '-';
     const branch = branches.find(b => b.id === branchId);
     return branch?.name || '-';
+  };
+
+  const getSectionName = (sectionId: string | null | undefined) => {
+    if (!sectionId) return '-';
+    const section = sections.find(s => s.id === sectionId);
+    return section?.name || '-';
   };
 
   const getEmployingCompanyName = (companyId: string | null | undefined) => {
@@ -598,6 +617,7 @@ export default function Employees() {
     const matchesRole = filterRole.length === 0 || (emp.job_role_id && filterRole.includes(emp.job_role_id));
     const matchesCity = !filterCity || emp.city?.toLowerCase().includes(filterCity.toLowerCase());
     const matchesBranch = filterBranch.length === 0 || (emp.branch_id && filterBranch.includes(emp.branch_id));
+    const matchesSection = filterSection.length === 0 || (emp.section_id && filterSection.includes(emp.section_id));
     const matchesEmployingCompany = filterEmployingCompany.length === 0 || (emp.employing_company_id && filterEmployingCompany.includes(emp.employing_company_id));
     const matchesSeniority = filterSeniority.length === 0 || (emp.seniority_level_id && filterSeniority.includes(emp.seniority_level_id));
     const matchesAttritionRisk = filterAttritionRisk.length === 0 || (emp.attrition_risk !== null && emp.attrition_risk !== undefined && filterAttritionRisk.includes(emp.attrition_risk.toString()));
@@ -606,7 +626,7 @@ export default function Employees() {
     const matchesRevolvingDoor = filterRevolvingDoor.length === 0 || filterRevolvingDoor.includes(emp.revolving_door === true ? 'true' : 'false');
 
     return matchesSearch && matchesProject && matchesRole && matchesCity &&
-      matchesRecruitmentPlan && matchesBranch && matchesEmployingCompany && matchesSeniority &&
+      matchesRecruitmentPlan && matchesBranch && matchesSection && matchesEmployingCompany && matchesSeniority &&
       matchesAttritionRisk && matchesUnitCriticality && matchesOurSourcing && matchesRevolvingDoor;
   });
 
@@ -701,6 +721,7 @@ export default function Employees() {
       cost: '',
       employing_company_id: '',
       branch_id: '',
+      section_id: '',
       phone: '',
       emergency_phone: '',
       seniority_level_id: '',
@@ -746,6 +767,7 @@ export default function Employees() {
       cost: isManager && formData.cost ? parseFloat(formData.cost) : null,
       employing_company_id: formData.employing_company_id || null,
       branch_id: formData.branch_id,
+      section_id: formData.section_id || null,
       seniority_level_id: formData.seniority_level_id || null,
       phone: formData.phone || null,
       emergency_phone: formData.emergency_phone || null,
@@ -804,6 +826,7 @@ export default function Employees() {
       birth_date: formData.birth_date || null,
       employing_company_id: formData.employing_company_id || null,
       branch_id: formData.branch_id,
+      section_id: formData.section_id || null,
       seniority_level_id: formData.seniority_level_id || null,
       phone: formData.phone || null,
       emergency_phone: formData.emergency_phone || null,
@@ -884,6 +907,7 @@ export default function Employees() {
       cost: employee.cost?.toString() || '',
       employing_company_id: employee.employing_company_id || '',
       branch_id: employee.branch_id || '',
+      section_id: employee.section_id || '',
       phone: employee.phone || '',
       emergency_phone: employee.emergency_phone || '',
       seniority_level_id: employee.seniority_level_id || '',
@@ -923,6 +947,7 @@ export default function Employees() {
     setFilterRole([]);
     setFilterCity('');
     setFilterBranch([]);
+    setFilterSection([]);
     setFilterEmployingCompany([]);
     setFilterSeniority([]);
     setFilterAttritionRisk([]);
@@ -937,6 +962,7 @@ export default function Employees() {
     filterRole.length > 0,
     filterCity !== '',
     filterBranch.length > 0,
+    filterSection.length > 0,
     filterEmployingCompany.length > 0,
     filterSeniority.length > 0,
     filterAttritionRisk.length > 0,
@@ -972,6 +998,9 @@ export default function Employees() {
             break;
           case 'branch_id':
             row[label] = getBranchName(employee.branch_id);
+            break;
+          case 'section_id':
+            row[label] = getSectionName(employee.section_id);
             break;
           case 'employing_company_id':
             row[label] = getEmployingCompanyName(employee.employing_company_id);
@@ -1094,9 +1123,9 @@ export default function Employees() {
     },
     {
       id: 'row_project_branch',
-      label: 'תכנית וענף',
+      label: 'תכנית, ענף ומדור',
       component: (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2 text-right">
             <Label htmlFor="project">תכנית</Label>
             <Select
@@ -1125,6 +1154,22 @@ export default function Employees() {
               <SelectContent>
                 {branches.map((branch) => (
                   <SelectItem key={branch.id} value={branch.id} className="text-right">{branch.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2 text-right">
+            <Label htmlFor="section_id">מדור</Label>
+            <Select
+              value={formData.section_id}
+              onValueChange={(value) => setFormData({ ...formData, section_id: value })}
+            >
+              <SelectTrigger className="text-right">
+                <SelectValue placeholder="בחר מדור" />
+              </SelectTrigger>
+              <SelectContent>
+                {sections.map((section) => (
+                  <SelectItem key={section.id} value={section.id} className="text-right">{section.name}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1653,7 +1698,7 @@ export default function Employees() {
         </div>
       ),
     },
-  ], [formData, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, performanceLevels]);
+  ], [formData, jobRoles, projects, branches, sections, employingCompanies, seniorityLevels, leavingReasons, performanceLevels]);
 
   // View-only form fields (same layout as edit, but displays values without editing)
   const viewFormFields = useMemo(() => [
@@ -1699,9 +1744,9 @@ export default function Employees() {
     },
     {
       id: 'row_project_branch',
-      label: 'תכנית וענף',
+      label: 'תכנית, ענף ומדור',
       component: (
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2 text-right">
             <Label>תכנית</Label>
             <Input
@@ -1715,6 +1760,14 @@ export default function Employees() {
             <Input
               className="text-right bg-muted"
               value={getBranchName(selectedEmployee?.branch_id)}
+              disabled
+            />
+          </div>
+          <div className="space-y-2 text-right">
+            <Label>מדור</Label>
+            <Input
+              className="text-right bg-muted"
+              value={getSectionName(selectedEmployee?.section_id)}
               disabled
             />
           </div>
@@ -2114,7 +2167,7 @@ export default function Employees() {
         </div>
       ),
     },
-  ], [selectedEmployee, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, performanceLevels, isManager]);
+  ], [selectedEmployee, jobRoles, projects, branches, sections, employingCompanies, seniorityLevels, leavingReasons, performanceLevels, isManager]);
 
   const renderFormFields = (disabled = false) => {
     const fields = disabled ? viewFormFields : formFields;
@@ -2446,6 +2499,15 @@ export default function Employees() {
                 />
               </div>
               <div className="space-y-2">
+                <Label>מדור</Label>
+                <MultiSelect
+                  options={sections.map((s) => ({ value: s.id, label: s.name }))}
+                  selected={filterSection}
+                  onChange={setFilterSection}
+                  placeholder="בחר מדורים"
+                />
+              </div>
+              <div className="space-y-2">
                 <Label>חברה מעסיקה</Label>
                 <MultiSelect
                   options={employingCompanies.map((c) => ({ value: c.id, label: c.name }))}
@@ -2587,6 +2649,8 @@ export default function Employees() {
                                     return <TableCell key={col}>{getProjectName(employee.project_id)}</TableCell>;
                                   case 'branch_id':
                                     return <TableCell key={col}>{getBranchName(employee.branch_id)}</TableCell>;
+                                  case 'section_id':
+                                    return <TableCell key={col}>{getSectionName(employee.section_id)}</TableCell>;
                                   case 'employing_company_id':
                                     return <TableCell key={col}>{getEmployingCompanyName(employee.employing_company_id)}</TableCell>;
                                   case 'seniority_level_id':

@@ -134,6 +134,7 @@ interface Employee {
     raan_decision?: string | null;
     raan_decision_moving_south?: string | null;
     transfer_to_company_id?: string | null;
+    section_id?: string | null;
 }
 
 interface NamedEntity {
@@ -150,6 +151,7 @@ export default function MovingSouth() {
     const [jobRoles, setJobRoles] = useState<NamedEntity[]>([]);
     const [employingCompanies, setEmployingCompanies] = useState<NamedEntity[]>([]);
     const [branches, setBranches] = useState<NamedEntity[]>([]);
+    const [sections, setSections] = useState<NamedEntity[]>([]);
     const [seniorityLevels, setSeniorityLevels] = useState<NamedEntity[]>([]);
     const [leavingReasons, setLeavingReasons] = useState<NamedEntity[]>([]);
     const [performanceLevels, setPerformanceLevels] = useState<NamedEntity[]>([]);
@@ -163,6 +165,7 @@ export default function MovingSouth() {
     const [movingSouthSearch, setMovingSouthSearch] = useState('');
     const [movingSouthFilterProject, setMovingSouthFilterProject] = useState<string[]>([]);
     const [movingSouthFilterBranch, setMovingSouthFilterBranch] = useState<string[]>([]);
+    const [movingSouthFilterSection, setMovingSouthFilterSection] = useState<string[]>([]);
     const [movingSouthFilterCompany, setMovingSouthFilterCompany] = useState<string[]>([]);
     const [movingSouthFilterCriticality, setMovingSouthFilterCriticality] = useState('all');
     const [movingSouthFilterAttritionRisk, setMovingSouthFilterAttritionRisk] = useState('all');
@@ -240,6 +243,7 @@ export default function MovingSouth() {
         cost: '',
         employing_company_id: '',
         branch_id: '',
+        section_id: '',
         phone: '',
         emergency_phone: '',
         seniority_level_id: '',
@@ -272,6 +276,7 @@ export default function MovingSouth() {
         { id: 'attrition_risk', label: 'מידת סיכוי לעזיבה', sortable: true },
         { id: 'full_name', label: 'שם העובד', sortable: true },
         { id: 'branchName', label: 'ענף', sortable: true },
+        { id: 'sectionName', label: 'מדור', sortable: true },
         { id: 'projectName', label: 'תכנית', sortable: true },
         { id: 'companyName', label: 'חברה מעסיקה', sortable: true },
         { id: 'city', label: 'עיר', sortable: true },
@@ -309,12 +314,13 @@ export default function MovingSouth() {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [employeesRes, projectsRes, rolesRes, companiesRes, branchesRes, seniorityRes, leavingReasonsRes, performanceLevelsRes, raanDecisionsRes] = await Promise.all([
+            const [employeesRes, projectsRes, rolesRes, companiesRes, branchesRes, sectionsRes, seniorityRes, leavingReasonsRes, performanceLevelsRes, raanDecisionsRes] = await Promise.all([
                 getDocs(collection(db, 'employees')),
                 getDocs(collection(db, 'projects')),
                 getDocs(collection(db, 'job_roles')),
                 getDocs(collection(db, 'employing_companies')),
                 getDocs(collection(db, 'branches')),
+                getDocs(collection(db, 'sections')),
                 getDocs(collection(db, 'seniority_levels')),
                 getDocs(collection(db, 'leaving_reasons')),
                 getDocs(collection(db, 'performance_levels')),
@@ -337,6 +343,7 @@ export default function MovingSouth() {
             setJobRoles(mapDocs(rolesRes));
             setEmployingCompanies(mapDocs(companiesRes));
             setBranches(mapDocs(branchesRes));
+            setSections(mapDocs(sectionsRes));
             setSeniorityLevels(mapDocs(seniorityRes));
             setLeavingReasons(mapDocs(leavingReasonsRes));
             setPerformanceLevels(mapDocs(performanceLevelsRes));
@@ -379,6 +386,12 @@ export default function MovingSouth() {
         return branch?.name || '-';
     };
 
+    const getSectionName = (sectionId: string | null | undefined) => {
+        if (!sectionId) return '-';
+        const section = sections.find(s => s.id === sectionId);
+        return section?.name || '-';
+    };
+
     const getEmployingCompanyName = (companyId: string | null | undefined) => {
         if (!companyId) return '-';
         const company = employingCompanies.find(c => c.id === companyId);
@@ -406,6 +419,7 @@ export default function MovingSouth() {
                 ...emp,
                 roleName: jobRoles.find((r) => r.id === emp.job_role_id)?.name || 'לא מוגדר',
                 branchName: branches.find((b) => b.id === emp.branch_id)?.name || 'לא מוגדר',
+                sectionName: sections.find((s) => s.id === emp.section_id)?.name || 'לא מוגדר',
                 projectName: projects.find((p) => p.id === emp.project_id)?.name || 'לא משויך',
                 companyName: employingCompanies.find((c) => c.id === emp.employing_company_id)?.name || 'לא מוגדר',
                 leavingReasonName: leavingReasons.find((r) => r.id === emp.leaving_reason_id)?.name || 'לא מוגדר',
@@ -418,22 +432,23 @@ export default function MovingSouth() {
                 emp.full_name.toLowerCase().includes(search) ||
                 emp.projectName.toLowerCase().includes(search) ||
                 emp.branchName.toLowerCase().includes(search) ||
+                emp.sectionName.toLowerCase().includes(search) ||
                 emp.companyName.toLowerCase().includes(search) ||
                 emp.city?.toLowerCase().includes(search) ||
                 emp.leavingReasonName.toLowerCase().includes(search)
             );
         }
 
-        if (movingSouthFilterProject.length > 0) {
-            data = data.filter(emp => {
-                const projId = emp.project_id || 'none';
-                return movingSouthFilterProject.includes(projId);
-            });
-        }
         if (movingSouthFilterBranch.length > 0) {
             data = data.filter(emp => {
                 const branchId = emp.branch_id || 'none';
                 return movingSouthFilterBranch.includes(branchId);
+            });
+        }
+        if (movingSouthFilterSection.length > 0) {
+            data = data.filter(emp => {
+                const sectId = emp.section_id || 'none';
+                return movingSouthFilterSection.includes(sectId);
             });
         }
         if (movingSouthFilterCompany.length > 0) {
@@ -472,7 +487,7 @@ export default function MovingSouth() {
         }
 
         return data;
-    }, [allEmployees, jobRoles, branches, projects, employingCompanies, leavingReasons, movingSouthSearch, movingSouthSortConfig, movingSouthFilterProject, movingSouthFilterBranch, movingSouthFilterCompany, movingSouthFilterCriticality, movingSouthFilterAttritionRisk, movingSouthFilterReplacement]);
+    }, [allEmployees, jobRoles, branches, sections, projects, employingCompanies, leavingReasons, movingSouthSearch, movingSouthSortConfig, movingSouthFilterProject, movingSouthFilterBranch, movingSouthFilterSection, movingSouthFilterCompany, movingSouthFilterCriticality, movingSouthFilterAttritionRisk, movingSouthFilterReplacement]);
 
     const filteredDashboardData = useMemo(() => {
         let data = movingSouthTableData;
@@ -755,6 +770,7 @@ export default function MovingSouth() {
             'מידת סיכוי לעזיבה': emp.attrition_risk || 0,
             'לגייס במקומו': emp.replacement_needed || '-',
             'ענף': emp.branchName,
+            'מדור': emp.sectionName,
             'תכנית': emp.projectName,
             'עיר': emp.city || '-',
             'סיבת רצון לעזוב (מפקדים) - קטגוריה': emp.leavingReasonName,
@@ -780,6 +796,7 @@ export default function MovingSouth() {
                 <TableRow>
                     <TableHead className="text-right font-bold">שם העובד</TableHead>
                     <TableHead className="text-right font-bold">ענף</TableHead>
+                    <TableHead className="text-right font-bold">מדור</TableHead>
                     <TableHead className="text-right font-bold">תכנית</TableHead>
                     <TableHead className="text-right font-bold">חברה</TableHead>
                     <TableHead className="text-right font-bold">עלות חודשית</TableHead>
@@ -791,6 +808,7 @@ export default function MovingSouth() {
                     <TableRow key={emp.id}>
                         <TableCell className="text-right font-medium">{emp.full_name}</TableCell>
                         <TableCell className="text-right">{getBranchName(emp.branch_id)}</TableCell>
+                        <TableCell className="text-right">{getSectionName(emp.section_id)}</TableCell>
                         <TableCell className="text-right">{getProjectName(emp.project_id)}</TableCell>
                         <TableCell className="text-right">{getEmployingCompanyName(emp.employing_company_id)}</TableCell>
                         <TableCell className="text-right">{(emp.cost ?? 0).toLocaleString()} ₪</TableCell>
@@ -831,6 +849,7 @@ export default function MovingSouth() {
             raan_decision: emp.raan_decision || '',
             raan_decision_moving_south: emp.raan_decision_moving_south || '',
             transfer_to_company_id: emp.transfer_to_company_id || 'not_relevant',
+            section_id: emp.section_id || '',
         });
         setIsEditDialogOpen(true);
     };
@@ -919,9 +938,9 @@ export default function MovingSouth() {
         },
         {
             id: 'row_project_branch',
-            label: 'תכנית וענף',
+            label: 'תכנית, ענף ומדור',
             component: (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2 text-right">
                         <Label htmlFor="project">תכנית</Label>
                         <Select
@@ -950,6 +969,22 @@ export default function MovingSouth() {
                             <SelectContent>
                                 {branches.map((branch) => (
                                     <SelectItem key={branch.id} value={branch.id} className="text-right">{branch.name}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label htmlFor="section_id">מדור</Label>
+                        <Select
+                            value={formData.section_id}
+                            onValueChange={(value) => setFormData({ ...formData, section_id: value })}
+                        >
+                            <SelectTrigger className="text-right">
+                                <SelectValue placeholder="בחר מדור" />
+                            </SelectTrigger>
+                            <SelectContent>
+                                {sections.map((section) => (
+                                    <SelectItem key={section.id} value={section.id} className="text-right">{section.name}</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>
@@ -1537,7 +1572,7 @@ export default function MovingSouth() {
                 </div>
             ),
         },
-    ]}, [formData, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, performanceLevels, raanDecisions]);
+    ]}, [formData, jobRoles, projects, branches, sections, employingCompanies, seniorityLevels, leavingReasons, performanceLevels, raanDecisions]);
 
     const viewFormFields = useMemo(() => [
         {
@@ -1574,9 +1609,9 @@ export default function MovingSouth() {
         },
         {
             id: 'row_project_branch',
-            label: 'תכנית וענף',
+            label: 'תכנית, ענף ומדור',
             component: (
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2 text-right">
                         <Label>תכנית</Label>
                         <Input
@@ -1590,6 +1625,14 @@ export default function MovingSouth() {
                         <Input
                             className="text-right bg-muted"
                             value={getBranchName(selectedEmployee?.branch_id)}
+                            disabled
+                        />
+                    </div>
+                    <div className="space-y-2 text-right">
+                        <Label>מדור</Label>
+                        <Input
+                            className="text-right bg-muted"
+                            value={getSectionName(selectedEmployee?.section_id)}
                             disabled
                         />
                     </div>
@@ -2033,7 +2076,7 @@ export default function MovingSouth() {
                 </div>
             ),
         },
-    ], [selectedEmployee, jobRoles, projects, branches, employingCompanies, seniorityLevels, leavingReasons, performanceLevels, isManager]);
+    ], [selectedEmployee, jobRoles, projects, branches, sections, employingCompanies, seniorityLevels, leavingReasons, performanceLevels, isManager]);
 
     const renderFormFields = (disabled = false) => {
         const fields = disabled ? viewFormFields : formFields;
@@ -2307,6 +2350,17 @@ export default function MovingSouth() {
                                                 ]}
                                                 selected={movingSouthFilterBranch}
                                                 onChange={setMovingSouthFilterBranch}
+                                            />
+                                        </div>
+                                        <div className="w-[180px]">
+                                            <MultiSelect
+                                                placeholder="פילטר מדור"
+                                                options={[
+                                                    ...sections.map(s => ({ label: s.name, value: s.id })),
+                                                    { label: 'לא מוגדר', value: 'none' }
+                                                ]}
+                                                selected={movingSouthFilterSection}
+                                                onChange={setMovingSouthFilterSection}
                                             />
                                         </div>
                                         <div className="w-[180px]">

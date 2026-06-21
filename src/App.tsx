@@ -17,6 +17,7 @@ import AdminRoles from "./pages/admin/Roles";
 import AdminUsers from "./pages/admin/Users";
 import AdminEmployingCompanies from "./pages/admin/EmployingCompanies";
 import AdminBranches from "./pages/admin/Branches";
+import AdminSections from "./pages/admin/Sections";
 import AdminSeniorityLevels from "./pages/admin/SeniorityLevels";
 import AdminLeavingReasons from "./pages/admin/LeavingReasons";
 import AdminPerformanceLevels from "./pages/admin/PerformanceLevels";
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/admin/recruitment-plans" element={<AdminRecruitmentPlans />} />
             <Route path="/admin/roles" element={<AdminRoles />} />
             <Route path="/admin/branches" element={<AdminBranches />} />
+            <Route path="/admin/sections" element={<AdminSections />} />
             <Route path="/admin/seniority-levels" element={<AdminSeniorityLevels />} />
             <Route path="/admin/users" element={<AdminUsers />} />
             <Route path="/admin/companies" element={<AdminEmployingCompanies />} />

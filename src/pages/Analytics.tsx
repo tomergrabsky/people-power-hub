@@ -136,6 +136,35 @@ const COLORS = [
   'hsl(330, 70%, 50%)',
 ];
 
+const MultiLineTick = (props: any) => {
+  const { x, y, payload } = props;
+  const value = payload.value;
+  
+  if (value && value.length > 12 && value.includes(' ')) {
+    const words = value.split(' ');
+    const half = Math.ceil(words.length / 2);
+    const line1 = words.slice(0, half).join(' ');
+    const line2 = words.slice(half).join(' ');
+    
+    return (
+      <g transform={`translate(${x},${y})`}>
+        <text x={0} y={0} textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize={10}>
+          <tspan x={0} dy="1em">{line1}</tspan>
+          <tspan x={0} dy="1.2em">{line2}</tspan>
+        </text>
+      </g>
+    );
+  }
+
+  return (
+    <g transform={`translate(${x},${y})`}>
+      <text x={0} y={0} dy="1em" textAnchor="middle" fill="hsl(var(--muted-foreground))" fontSize={10}>
+        {value}
+      </text>
+    </g>
+  );
+};
+
 export default function Analytics() {
   const navigate = useNavigate();
   const { user, loading: authLoading, isManager, isSuperAdmin, allowedProjectIds } = useAuth();
@@ -208,9 +237,11 @@ export default function Analytics() {
   const [selectedLeavingReason, setSelectedLeavingReason] = useState<string | null>(null);
   const [isLeavingReasonDialogOpen, setIsLeavingReasonDialogOpen] = useState(false);
 
-  // Dialog state for viewing single employee details
-  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [isEmployeeDetailDialogOpen, setIsEmployeeDetailDialogOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
+
+  // New state for hovered branch in stacked chart
+  const [hoveredBranch, setHoveredBranch] = useState<string | null>(null);
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -437,6 +468,37 @@ export default function Analytics() {
       .filter((item) => item.cost > 0)
       .sort((a, b) => b.cost - a.cost);
   }, [filteredEmployees, companies]);
+
+  const costByProjectAndBranchData = useMemo(() => {
+    const dataMap: Record<string, any> = {};
+    
+    filteredEmployees.forEach((emp) => {
+      const projectName = projects.find((p) => p.id === emp.project_id)?.name || 'לא משויך';
+      const branchName = branches.find((b) => b.id === emp.branch_id)?.name || 'לא מוגדר';
+      const cost = Number(emp.cost) || 0;
+      
+      if (!dataMap[projectName]) {
+        dataMap[projectName] = { name: projectName, _total: 0 };
+      }
+      dataMap[projectName][branchName] = (dataMap[projectName][branchName] || 0) + cost;
+      dataMap[projectName]._total += cost;
+    });
+
+    return Object.values(dataMap)
+      .filter(row => row._total > 0)
+      .sort((a, b) => b._total - a._total);
+  }, [filteredEmployees, projects, branches]);
+
+  const allFilteredBranchNames = useMemo(() => {
+    const names = new Set<string>();
+    filteredEmployees.forEach(emp => {
+      if (emp.cost && emp.cost > 0) {
+        const branchName = branches.find(b => b.id === emp.branch_id)?.name || 'לא מוגדר';
+        names.add(branchName);
+      }
+    });
+    return Array.from(names).sort();
+  }, [filteredEmployees, branches]);
 
   const employeesByCriticality = useMemo(() => {
     const counts: Record<string, number> = {};
@@ -1573,6 +1635,86 @@ export default function Analytics() {
                       </Card>
                     )}
                   </div>
+                )}
+
+                {/* New stacked cost chart per program and branch */}
+                {isManager && costByProjectAndBranchData.length > 0 && (
+                  <Card className="glass-card">
+                    <CardHeader>
+                      <CardTitle>הוצאה חודשית פר תכנית (חלוקה לענפים)</CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="h-[450px]">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart 
+                            data={costByProjectAndBranchData}
+                            margin={{ top: 20, right: 30, left: 40, bottom: 90 }}
+                          >
+                            <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" vertical={false} />
+                            <XAxis 
+                              dataKey="name" 
+                              stroke="hsl(var(--muted-foreground))" 
+                              interval={0}
+                              height={80}
+                              tick={<MultiLineTick />}
+                            />
+                            <YAxis 
+                              stroke="hsl(var(--muted-foreground))" 
+                              fontSize={12} 
+                              tickFormatter={(value) => `₪${value >= 1000 ? (value / 1000).toFixed(0) + 'K' : value}`}
+                            />
+                            <Tooltip
+                              content={({ active, payload, label }) => {
+                                if (active && payload && payload.length) {
+                                  // Find the specific item being hovered if possible
+                                  const itemToShow = (hoveredBranch && payload.find((p: any) => p.name === hoveredBranch)) || payload[0];
+                                  if (!itemToShow) return null;
+                                  
+                                  const totalCost = payload.reduce((sum, p) => sum + (Number(p.value) || 0), 0);
+                                  
+                                  return (
+                                    <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                      <p className="font-medium text-foreground border-b border-border pb-1 mb-2">תכנית: {label}</p>
+                                      <div className="space-y-1 text-sm">
+                                        <p className="text-muted-foreground flex justify-between gap-4">
+                                          <span>ענף:</span>
+                                          <span className="font-medium text-foreground">{itemToShow.name || 'לא ידוע'}</span>
+                                        </p>
+                                        <p className="text-primary font-bold flex justify-between gap-4">
+                                          <span>עלות ענף:</span>
+                                          <span dir="ltr">₪{itemToShow.value?.toLocaleString()}</span>
+                                        </p>
+                                        <div className="mt-2 pt-2 border-t border-border">
+                                          <p className="text-foreground font-bold flex justify-between gap-4">
+                                            <span>סה"כ תכנית:</span>
+                                            <span dir="ltr">₪{totalCost.toLocaleString()}</span>
+                                          </p>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              }}
+                            />
+                            <Legend verticalAlign="top" height={36}/>
+                            {allFilteredBranchNames.map((branch, index) => (
+                              <Bar
+                                key={branch}
+                                dataKey={branch}
+                                name={branch}
+                                stackId="a"
+                                fill={COLORS[index % COLORS.length]}
+                                onMouseEnter={() => setHoveredBranch(branch)}
+                                onMouseLeave={() => setHoveredBranch(null)}
+                                barSize={40}
+                              />
+                            ))}
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+                    </CardContent>
+                  </Card>
                 )}
 
                 {/* Row: Criticality and Attrition Risk charts (managers only) */}
