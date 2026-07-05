@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { db } from '@/integrations/firebase/client';
 import { collection, getDocs, updateDoc, doc } from 'firebase/firestore';
@@ -6,6 +6,8 @@ import { MainLayout } from '@/components/layout/MainLayout';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { UnauthorizedActionDialog } from '@/components/employees/UnauthorizedActionDialog';
+import { Badge } from '@/components/ui/badge';
+import { MultiSelect } from '@/components/ui/multi-select';
 import {
     Table,
     TableBody,
@@ -23,7 +25,7 @@ import {
     DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, RotateCcw, Eye, Loader2, Users, Pencil } from 'lucide-react';
+import { Search, RotateCcw, Eye, Loader2, Users, Pencil, Filter, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -88,6 +90,21 @@ const LeftEmployees = () => {
     const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
     const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
     const [activeTab, setActiveTab] = useState('left_info');
+
+    // Filter states
+    const [showFilters, setShowFilters] = useState(false);
+    const [filterProject, setFilterProject] = useState<string[]>([]);
+    const [filterRecruitmentPlan, setFilterRecruitmentPlan] = useState<string[]>([]);
+    const [filterRole, setFilterRole] = useState<string[]>([]);
+    const [filterCity, setFilterCity] = useState<string>('');
+    const [filterBranch, setFilterBranch] = useState<string[]>([]);
+    const [filterSection, setFilterSection] = useState<string[]>([]);
+    const [filterEmployingCompany, setFilterEmployingCompany] = useState<string[]>([]);
+    const [filterSeniority, setFilterSeniority] = useState<string[]>([]);
+    const [filterAttritionRisk, setFilterAttritionRisk] = useState<string[]>([]);
+    const [filterUnitCriticality, setFilterUnitCriticality] = useState<string[]>([]);
+    const [filterOurSourcing, setFilterOurSourcing] = useState<string[]>([]);
+    const [filterRevolvingDoor, setFilterRevolvingDoor] = useState<string[]>([]);
     const [actionLoading, setActionLoading] = useState(false);
 
     const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
@@ -221,9 +238,68 @@ const LeftEmployees = () => {
         return `${years} שנים ו-${remainingMonths} חודשים`;
     };
 
-    const filteredEmployees = employees.filter(emp =>
-        emp.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-    );
+    const allowedProjects = useMemo(() => {
+        if (isSuperAdmin) return projects;
+        return projects.filter(p => allowedProjectIds?.includes(p.id));
+    }, [projects, isSuperAdmin, allowedProjectIds]);
+
+    const clearFilters = () => {
+        setSearchTerm('');
+        setFilterProject([]);
+        setFilterRecruitmentPlan([]);
+        setFilterRole([]);
+        setFilterCity('');
+        setFilterBranch([]);
+        setFilterSection([]);
+        setFilterEmployingCompany([]);
+        setFilterSeniority([]);
+        setFilterAttritionRisk([]);
+        setFilterUnitCriticality([]);
+        setFilterOurSourcing([]);
+        setFilterRevolvingDoor([]);
+    };
+
+    const activeFiltersCount = [
+        filterProject.length > 0,
+        filterRecruitmentPlan.length > 0,
+        filterRole.length > 0,
+        filterCity !== '',
+        filterBranch.length > 0,
+        filterSection.length > 0,
+        filterEmployingCompany.length > 0,
+        filterSeniority.length > 0,
+        filterAttritionRisk.length > 0,
+        filterUnitCriticality.length > 0,
+        filterOurSourcing.length > 0,
+        filterRevolvingDoor.length > 0,
+    ].filter(Boolean).length;
+
+    const filteredEmployees = employees.filter(emp => {
+        const searchLower = searchTerm.toLowerCase();
+        const strFullName = emp.full_name ? String(emp.full_name).toLowerCase() : '';
+        const strIdNumber = emp.id_number ? String(emp.id_number).toLowerCase() : '';
+        const strCity = emp.city ? String(emp.city).toLowerCase() : '';
+
+        const matchesSearch = strFullName.includes(searchLower) ||
+            strIdNumber.includes(searchLower) ||
+            strCity.includes(searchLower);
+        const matchesProject = filterProject.length === 0 || (emp.project_id && filterProject.includes(emp.project_id));
+        const matchesRecruitmentPlan = filterRecruitmentPlan.length === 0 || (emp.recruitment_plan_id && filterRecruitmentPlan.includes(emp.recruitment_plan_id));
+        const matchesRole = filterRole.length === 0 || (emp.job_role_id && filterRole.includes(emp.job_role_id));
+        const matchesCity = !filterCity || emp.city?.toLowerCase().includes(filterCity.toLowerCase());
+        const matchesBranch = filterBranch.length === 0 || (emp.branch_id && filterBranch.includes(emp.branch_id));
+        const matchesSection = filterSection.length === 0 || (emp.section_id && filterSection.includes(emp.section_id));
+        const matchesEmployingCompany = filterEmployingCompany.length === 0 || (emp.employing_company_id && filterEmployingCompany.includes(emp.employing_company_id));
+        const matchesSeniority = filterSeniority.length === 0 || (emp.seniority_level_id && filterSeniority.includes(emp.seniority_level_id));
+        const matchesAttritionRisk = filterAttritionRisk.length === 0 || (emp.attrition_risk !== null && emp.attrition_risk !== undefined && filterAttritionRisk.includes(emp.attrition_risk.toString()));
+        const matchesUnitCriticality = filterUnitCriticality.length === 0 || (emp.unit_criticality !== null && emp.unit_criticality !== undefined && filterUnitCriticality.includes(emp.unit_criticality.toString()));
+        const matchesOurSourcing = filterOurSourcing.length === 0 || filterOurSourcing.includes(emp.our_sourcing === true ? 'true' : 'false');
+        const matchesRevolvingDoor = filterRevolvingDoor.length === 0 || filterRevolvingDoor.includes(emp.revolving_door === true ? 'true' : 'false');
+
+        return matchesSearch && matchesProject && matchesRole && matchesCity &&
+            matchesRecruitmentPlan && matchesBranch && matchesSection && matchesEmployingCompany && matchesSeniority &&
+            matchesAttritionRisk && matchesUnitCriticality && matchesOurSourcing && matchesRevolvingDoor;
+    });
 
     const handleRestore = async (employee: Employee) => {
         if (!isSuperAdmin) {
@@ -303,16 +379,154 @@ const LeftEmployees = () => {
                     </div>
                 </div>
 
-                <div className="flex flex-col md:flex-row gap-4">
-                    <div className="relative flex-1">
-                        <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="חיפוש עובד..."
-                            value={searchTerm}
-                            onChange={(e) => setSearchTerm(e.target.value)}
-                            className="pr-9"
-                        />
+                <div className="space-y-4">
+                    <div className="flex flex-col sm:flex-row gap-3">
+                        <div className="relative flex-1">
+                            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+                            <Input
+                                placeholder="חפש לפי שם, ת.ז או עיר..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="pr-10"
+                            />
+                        </div>
+                        <Button
+                            variant="outline"
+                            onClick={() => setShowFilters(!showFilters)}
+                            className="relative"
+                        >
+                            <Filter className="w-4 h-4 ml-2" />
+                            סננים
+                            {activeFiltersCount > 0 && (
+                                <Badge className="absolute -top-2 -left-2 h-5 w-5 p-0 flex items-center justify-center text-xs">
+                                    {activeFiltersCount}
+                                </Badge>
+                            )}
+                        </Button>
+                        {activeFiltersCount > 0 && (
+                            <Button variant="ghost" onClick={clearFilters}>
+                                <X className="w-4 h-4 ml-2" />
+                                נקה סננים
+                            </Button>
+                        )}
                     </div>
+
+                    {showFilters && (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 p-4 bg-secondary/50 rounded-lg animate-slide-in-up">
+                            <div className="space-y-2">
+                                <Label>תכנית</Label>
+                                <MultiSelect
+                                    options={allowedProjects.map((p) => ({ value: p.id, label: p.name }))}
+                                    selected={filterProject}
+                                    onChange={setFilterProject}
+                                    placeholder="בחר תכניות"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>קבלן משנה/תכנית גיוס</Label>
+                                <MultiSelect
+                                    options={recruitmentPlans.map((r) => ({ value: r.id, label: r.name }))}
+                                    selected={filterRecruitmentPlan}
+                                    onChange={setFilterRecruitmentPlan}
+                                    placeholder="בחר קבלן משנה/תכנית גיוס"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>תפקיד</Label>
+                                <MultiSelect
+                                    options={jobRoles.map((r) => ({ value: r.id, label: r.name }))}
+                                    selected={filterRole}
+                                    onChange={setFilterRole}
+                                    placeholder="בחר תפקידים"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>ענף</Label>
+                                <MultiSelect
+                                    options={branches.map((b) => ({ value: b.id, label: b.name }))}
+                                    selected={filterBranch}
+                                    onChange={setFilterBranch}
+                                    placeholder="בחר ענפים"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>מדור</Label>
+                                <MultiSelect
+                                    options={sections.map((s) => ({ value: s.id, label: s.name }))}
+                                    selected={filterSection}
+                                    onChange={setFilterSection}
+                                    placeholder="בחר מדורים"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>חברה מעסיקה</Label>
+                                <MultiSelect
+                                    options={employingCompanies.map((c) => ({ value: c.id, label: c.name }))}
+                                    selected={filterEmployingCompany}
+                                    onChange={setFilterEmployingCompany}
+                                    placeholder="בחר חברות"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label>סניוריטי</Label>
+                                <MultiSelect
+                                    options={seniorityLevels.map((s) => ({ value: s.id, label: s.name }))}
+                                    selected={filterSeniority}
+                                    onChange={setFilterSeniority}
+                                    placeholder="בחר רמות ותק"
+                                />
+                            </div>
+                            {isManager && (
+                                <>
+                                    <div className="space-y-2">
+                                        <Label>רמת סיכוי לעזוב - לדעת היחידה</Label>
+                                        <MultiSelect
+                                            options={[0, 1, 2, 3, 4, 5].map((val) => ({ value: val.toString(), label: val.toString() }))}
+                                            selected={filterAttritionRisk}
+                                            onChange={setFilterAttritionRisk}
+                                            placeholder="בחר רמות סיכוי"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>קריטיות ליחידה</Label>
+                                        <MultiSelect
+                                            options={[0, 1, 2, 3, 4, 5].map((val) => ({ value: val.toString(), label: val.toString() }))}
+                                            selected={filterUnitCriticality}
+                                            onChange={setFilterUnitCriticality}
+                                            placeholder="בחר רמות קריטיות"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>איתור שלנו?</Label>
+                                        <MultiSelect
+                                            options={[{ value: 'true', label: 'כן' }, { value: 'false', label: 'לא' }]}
+                                            selected={filterOurSourcing}
+                                            onChange={setFilterOurSourcing}
+                                            placeholder="בחר ערך"
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label>דלת מסתובבת</Label>
+                                        <MultiSelect
+                                            options={[{ value: 'true', label: 'כן' }, { value: 'false', label: 'לא' }]}
+                                            selected={filterRevolvingDoor}
+                                            onChange={setFilterRevolvingDoor}
+                                            placeholder="בחר ערך"
+                                        />
+                                    </div>
+                                </>
+                            )}
+                            <div className="space-y-2">
+                                <Label>עיר</Label>
+                                <Input
+                                    placeholder="סנן לפי עיר"
+                                    value={filterCity}
+                                    onChange={(e) => setFilterCity(e.target.value)}
+                                    className="text-right"
+                                />
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 <div className="table-container">
