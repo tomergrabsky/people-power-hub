@@ -276,7 +276,7 @@ export default function MovingSouth() {
         { id: 'attrition_risk', label: 'מידת סיכוי לעזיבה', sortable: true },
         { id: 'full_name', label: 'שם העובד', sortable: true },
         { id: 'branchName', label: 'ענף', sortable: true },
-        { id: 'sectionName', label: 'מדור', sortable: true },
+        { id: 'sectionName', label: 'הצוות של:', sortable: true },
         { id: 'projectName', label: 'תכנית', sortable: true },
         { id: 'companyName', label: 'חברה מעסיקה', sortable: true },
         { id: 'city', label: 'עיר', sortable: true },
@@ -389,7 +389,7 @@ export default function MovingSouth() {
     const getSectionName = (sectionId: string | null | undefined) => {
         if (!sectionId) return '-';
         const section = sections.find(s => s.id === sectionId);
-        return section?.name || '-';
+        return section?.name || sectionId;
     };
 
     const getEmployingCompanyName = (companyId: string | null | undefined) => {
@@ -413,13 +413,23 @@ export default function MovingSouth() {
         return Math.max(0, Math.round(diffYears * 10) / 10);
     };
 
+    const uniqueSections = useMemo(() => {
+        const sectionsSet = new Set<string>();
+        allEmployees.forEach(emp => {
+            if (emp.section_id) {
+                sectionsSet.add(getSectionName(emp.section_id));
+            }
+        });
+        return Array.from(sectionsSet).filter(name => name && name !== '-').sort().map(name => ({ value: name, label: name }));
+    }, [allEmployees, sections]);
+
     const movingSouthTableData = useMemo(() => {
         let data = allEmployees
             .map((emp) => ({
                 ...emp,
                 roleName: jobRoles.find((r) => r.id === emp.job_role_id)?.name || 'לא מוגדר',
                 branchName: branches.find((b) => b.id === emp.branch_id)?.name || 'לא מוגדר',
-                sectionName: sections.find((s) => s.id === emp.section_id)?.name || 'לא מוגדר',
+                sectionName: emp.section_id ? getSectionName(emp.section_id) : 'לא מוגדר',
                 projectName: projects.find((p) => p.id === emp.project_id)?.name || 'לא משויך',
                 companyName: employingCompanies.find((c) => c.id === emp.employing_company_id)?.name || 'לא מוגדר',
                 leavingReasonName: leavingReasons.find((r) => r.id === emp.leaving_reason_id)?.name || 'לא מוגדר',
@@ -447,8 +457,8 @@ export default function MovingSouth() {
         }
         if (movingSouthFilterSection.length > 0) {
             data = data.filter(emp => {
-                const sectId = emp.section_id || 'none';
-                return movingSouthFilterSection.includes(sectId);
+                const sectName = emp.section_id ? getSectionName(emp.section_id) : 'none';
+                return movingSouthFilterSection.includes(sectName);
             });
         }
         if (movingSouthFilterCompany.length > 0) {
@@ -770,7 +780,7 @@ export default function MovingSouth() {
             'מידת סיכוי לעזיבה': emp.attrition_risk || 0,
             'לגייס במקומו': emp.replacement_needed || '-',
             'ענף': emp.branchName,
-            'מדור': emp.sectionName,
+            'הצוות של:': emp.sectionName,
             'תכנית': emp.projectName,
             'עיר': emp.city || '-',
             'סיבת רצון לעזוב (מפקדים) - קטגוריה': emp.leavingReasonName,
@@ -796,7 +806,7 @@ export default function MovingSouth() {
                 <TableRow>
                     <TableHead className="text-right font-bold">שם העובד</TableHead>
                     <TableHead className="text-right font-bold">ענף</TableHead>
-                    <TableHead className="text-right font-bold">מדור</TableHead>
+                    <TableHead className="text-right font-bold">הצוות של:</TableHead>
                     <TableHead className="text-right font-bold">תכנית</TableHead>
                     <TableHead className="text-right font-bold">חברה</TableHead>
                     <TableHead className="text-right font-bold">עלות חודשית</TableHead>
@@ -938,7 +948,7 @@ export default function MovingSouth() {
         },
         {
             id: 'row_project_branch',
-            label: 'תכנית, ענף ומדור',
+            label: 'תכנית, ענף והצוות של',
             component: (
                 <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2 text-right">
@@ -974,20 +984,14 @@ export default function MovingSouth() {
                         </Select>
                     </div>
                     <div className="space-y-2 text-right">
-                        <Label htmlFor="section_id">מדור</Label>
-                        <Select
-                            value={formData.section_id}
-                            onValueChange={(value) => setFormData({ ...formData, section_id: value })}
-                        >
-                            <SelectTrigger className="text-right">
-                                <SelectValue placeholder="בחר מדור" />
-                            </SelectTrigger>
-                            <SelectContent>
-                                {sections.map((section) => (
-                                    <SelectItem key={section.id} value={section.id} className="text-right">{section.name}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
+                        <Label htmlFor="section_id">הצוות של:</Label>
+                        <Input
+                            id="section_id"
+                            value={formData.section_id || ''}
+                            onChange={(e) => setFormData({ ...formData, section_id: e.target.value })}
+                            className="text-right"
+                            placeholder="הזן צוות"
+                        />
                     </div>
                 </div>
             ),
@@ -1609,7 +1613,7 @@ export default function MovingSouth() {
         },
         {
             id: 'row_project_branch',
-            label: 'תכנית, ענף ומדור',
+            label: 'תכנית, ענף והצוות של',
             component: (
                 <div className="grid grid-cols-3 gap-4">
                     <div className="space-y-2 text-right">
@@ -1629,7 +1633,7 @@ export default function MovingSouth() {
                         />
                     </div>
                     <div className="space-y-2 text-right">
-                        <Label>מדור</Label>
+                        <Label>הצוות של:</Label>
                         <Input
                             className="text-right bg-muted"
                             value={getSectionName(selectedEmployee?.section_id)}
@@ -2354,9 +2358,9 @@ export default function MovingSouth() {
                                         </div>
                                         <div className="w-[180px]">
                                             <MultiSelect
-                                                placeholder="פילטר מדור"
+                                                placeholder="פילטר צוות"
                                                 options={[
-                                                    ...sections.map(s => ({ label: s.name, value: s.id })),
+                                                    ...uniqueSections,
                                                     { label: 'לא מוגדר', value: 'none' }
                                                 ]}
                                                 selected={movingSouthFilterSection}

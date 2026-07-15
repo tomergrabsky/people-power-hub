@@ -48,7 +48,7 @@ const adminNavItems = [
   { title: 'קבלן משנה/תכנית גיוס', url: '/admin/recruitment-plans', icon: Building2 },
   { title: 'ניהול תפקידים', url: '/admin/roles', icon: Briefcase },
   { title: 'ניהול ענפים', url: '/admin/branches', icon: GitBranch },
-  { title: 'ניהול מדורים', url: '/admin/sections', icon: Layers },
+  // { title: 'ניהול מדורים', url: '/admin/sections', icon: Layers },
   { title: 'רמות ותק', url: '/admin/seniority-levels', icon: Briefcase },
   { title: 'ניהול ביצועים', url: '/admin/performance-levels', icon: BarChart3 },
   { title: 'חברות מעסיקות', url: '/admin/companies', icon: Building2 },

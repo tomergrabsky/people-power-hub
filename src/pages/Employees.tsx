@@ -246,7 +246,7 @@ export default function Employees() {
     project_id: 'תכנית',
     recruitment_plan_id: 'קבלן משנה/תכנית גיוס',
     branch_id: 'ענף',
-    section_id: 'מדור',
+    section_id: 'הצוות של:',
     employing_company_id: 'חברה מעסיקה',
     seniority_level_id: 'סניוריטי',
     professional_experience_years: 'ותק במקצוע',
@@ -559,7 +559,7 @@ export default function Employees() {
   const getSectionName = (sectionId: string | null | undefined) => {
     if (!sectionId) return '-';
     const section = sections.find(s => s.id === sectionId);
-    return section?.name || '-';
+    return section?.name || sectionId;
   };
 
   const getEmployingCompanyName = (companyId: string | null | undefined) => {
@@ -603,6 +603,16 @@ export default function Employees() {
     return Math.max(0, Math.round(diffYears * 10) / 10); // Round to 1 decimal place
   };
 
+  const uniqueSections = useMemo(() => {
+    const sectionsSet = new Set<string>();
+    employees.forEach(emp => {
+      if (emp.section_id) {
+        sectionsSet.add(getSectionName(emp.section_id));
+      }
+    });
+    return Array.from(sectionsSet).filter(name => name && name !== '-').sort().map(name => ({ value: name, label: name }));
+  }, [employees, sections]);
+
   const filteredEmployees = employees.filter(emp => {
     const searchLower = searchTerm.toLowerCase();
     const strFullName = emp.full_name ? String(emp.full_name).toLowerCase() : '';
@@ -617,7 +627,8 @@ export default function Employees() {
     const matchesRole = filterRole.length === 0 || (emp.job_role_id && filterRole.includes(emp.job_role_id));
     const matchesCity = !filterCity || emp.city?.toLowerCase().includes(filterCity.toLowerCase());
     const matchesBranch = filterBranch.length === 0 || (emp.branch_id && filterBranch.includes(emp.branch_id));
-    const matchesSection = filterSection.length === 0 || (emp.section_id && filterSection.includes(emp.section_id));
+    const empSectionName = getSectionName(emp.section_id);
+    const matchesSection = filterSection.length === 0 || (empSectionName !== '-' && filterSection.includes(empSectionName));
     const matchesEmployingCompany = filterEmployingCompany.length === 0 || (emp.employing_company_id && filterEmployingCompany.includes(emp.employing_company_id));
     const matchesSeniority = filterSeniority.length === 0 || (emp.seniority_level_id && filterSeniority.includes(emp.seniority_level_id));
     const matchesAttritionRisk = filterAttritionRisk.length === 0 || (emp.attrition_risk !== null && emp.attrition_risk !== undefined && filterAttritionRisk.includes(emp.attrition_risk.toString()));
@@ -1123,7 +1134,7 @@ export default function Employees() {
     },
     {
       id: 'row_project_branch',
-      label: 'תכנית, ענף ומדור',
+      label: 'תכנית, ענף והצוות של',
       component: (
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2 text-right">
@@ -1159,20 +1170,14 @@ export default function Employees() {
             </Select>
           </div>
           <div className="space-y-2 text-right">
-            <Label htmlFor="section_id">מדור</Label>
-            <Select
+            <Label htmlFor="section_id">הצוות של:</Label>
+            <Input
+              id="section_id"
               value={formData.section_id}
-              onValueChange={(value) => setFormData({ ...formData, section_id: value })}
-            >
-              <SelectTrigger className="text-right">
-                <SelectValue placeholder="בחר מדור" />
-              </SelectTrigger>
-              <SelectContent>
-                {sections.map((section) => (
-                  <SelectItem key={section.id} value={section.id} className="text-right">{section.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              onChange={(e) => setFormData({ ...formData, section_id: e.target.value })}
+              className="text-right"
+              placeholder="הזן צוות"
+            />
           </div>
         </div>
       ),
@@ -1744,7 +1749,7 @@ export default function Employees() {
     },
     {
       id: 'row_project_branch',
-      label: 'תכנית, ענף ומדור',
+      label: 'תכנית, ענף והצוות של',
       component: (
         <div className="grid grid-cols-3 gap-4">
           <div className="space-y-2 text-right">
@@ -1764,7 +1769,7 @@ export default function Employees() {
             />
           </div>
           <div className="space-y-2 text-right">
-            <Label>מדור</Label>
+            <Label>הצוות של:</Label>
             <Input
               className="text-right bg-muted"
               value={getSectionName(selectedEmployee?.section_id)}
@@ -2499,12 +2504,12 @@ export default function Employees() {
                 />
               </div>
               <div className="space-y-2">
-                <Label>מדור</Label>
+                <Label>הצוות של:</Label>
                 <MultiSelect
-                  options={sections.map((s) => ({ value: s.id, label: s.name }))}
+                  options={uniqueSections}
                   selected={filterSection}
                   onChange={setFilterSection}
-                  placeholder="בחר מדורים"
+                  placeholder="בחר צוותים"
                 />
               </div>
               <div className="space-y-2">

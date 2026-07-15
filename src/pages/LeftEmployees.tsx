@@ -274,6 +274,16 @@ const LeftEmployees = () => {
         filterRevolvingDoor.length > 0,
     ].filter(Boolean).length;
 
+    const uniqueSections = useMemo(() => {
+        const sectionsSet = new Set<string>();
+        employees.forEach(emp => {
+            if (emp.section_id) {
+                sectionsSet.add(getSectionName(emp.section_id));
+            }
+        });
+        return Array.from(sectionsSet).filter(name => name && name !== '-').sort().map(name => ({ value: name, label: name }));
+    }, [employees, sections]);
+
     const filteredEmployees = employees.filter(emp => {
         const searchLower = searchTerm.toLowerCase();
         const strFullName = emp.full_name ? String(emp.full_name).toLowerCase() : '';
@@ -288,7 +298,8 @@ const LeftEmployees = () => {
         const matchesRole = filterRole.length === 0 || (emp.job_role_id && filterRole.includes(emp.job_role_id));
         const matchesCity = !filterCity || emp.city?.toLowerCase().includes(filterCity.toLowerCase());
         const matchesBranch = filterBranch.length === 0 || (emp.branch_id && filterBranch.includes(emp.branch_id));
-        const matchesSection = filterSection.length === 0 || (emp.section_id && filterSection.includes(emp.section_id));
+        const empSectionName = getSectionName(emp.section_id || null);
+        const matchesSection = filterSection.length === 0 || (empSectionName !== '-' && filterSection.includes(empSectionName));
         const matchesEmployingCompany = filterEmployingCompany.length === 0 || (emp.employing_company_id && filterEmployingCompany.includes(emp.employing_company_id));
         const matchesSeniority = filterSeniority.length === 0 || (emp.seniority_level_id && filterSeniority.includes(emp.seniority_level_id));
         const matchesAttritionRisk = filterAttritionRisk.length === 0 || (emp.attrition_risk !== null && emp.attrition_risk !== undefined && filterAttritionRisk.includes(emp.attrition_risk.toString()));
@@ -450,12 +461,12 @@ const LeftEmployees = () => {
                                 />
                             </div>
                             <div className="space-y-2">
-                                <Label>מדור</Label>
+                                <Label>הצוות של:</Label>
                                 <MultiSelect
-                                    options={sections.map((s) => ({ value: s.id, label: s.name }))}
+                                    options={uniqueSections}
                                     selected={filterSection}
                                     onChange={setFilterSection}
-                                    placeholder="בחר מדורים"
+                                    placeholder="בחר צוותים"
                                 />
                             </div>
                             <div className="space-y-2">
@@ -697,7 +708,7 @@ const LeftEmployees = () => {
                                                     <Input className="text-right bg-muted" value={getBranchName(selectedEmployee.branch_id || null)} disabled />
                                                 </div>
                                                 <div className="space-y-2 text-right">
-                                                    <Label>מדור</Label>
+                                                    <Label>הצוות של:</Label>
                                                     <Input className="text-right bg-muted" value={getSectionName(selectedEmployee.section_id || null)} disabled />
                                                 </div>
                                             </div>
