@@ -457,6 +457,14 @@ export default function Analytics() {
       .sort((a, b) => b.cost - a.cost);
   }, [filteredEmployees, branches]);
 
+  const annualCostByProject = useMemo(() => {
+    return costByProject.map(item => ({ name: item.name, cost: item.cost * 12 }));
+  }, [costByProject]);
+
+  const annualCostByBranch = useMemo(() => {
+    return costByBranch.map(item => ({ name: item.name, cost: item.cost * 12 }));
+  }, [costByBranch]);
+
   const costByCompany = useMemo(() => {
     const costs: Record<string, number> = {};
     filteredEmployees.forEach((emp) => {
@@ -1624,6 +1632,89 @@ export default function Analytics() {
                                 <Bar
                                   dataKey="cost"
                                   fill="hsl(var(--accent))"
+                                  radius={[4, 4, 0, 0]}
+                                  onClick={(data) => handleBranchClick(data.name)}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+                  </div>
+                )}
+
+                {/* Row 5b: Annual cost charts (managers only) */}
+                {isManager && (annualCostByProject.length > 0 || annualCostByBranch.length > 0) && (
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {annualCostByProject.length > 0 && (
+                      <Card className="glass-card">
+                        <CardHeader>
+                          <CardTitle>עלות שנתית לפי תכנית</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={annualCostByProject}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => `₪${value >= 1000 ? (value / 1000).toFixed(0) + 'K' : value}`} />
+                                <Tooltip
+                                  content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                          <p className="font-medium text-foreground">{label}</p>
+                                          <p className="text-primary" dir="ltr">₪{payload[0].value?.toLocaleString()}</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar
+                                  dataKey="cost"
+                                  fill="hsl(160, 65%, 45%)"
+                                  radius={[4, 4, 0, 0]}
+                                  onClick={(data) => handleProgramClick(data.name)}
+                                  style={{ cursor: 'pointer' }}
+                                />
+                              </BarChart>
+                            </ResponsiveContainer>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    )}
+
+                    {annualCostByBranch.length > 0 && (
+                      <Card className="glass-card">
+                        <CardHeader>
+                          <CardTitle>עלות שנתית לפי ענף</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="h-80">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <BarChart data={annualCostByBranch}>
+                                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                                <XAxis dataKey="name" stroke="hsl(var(--muted-foreground))" fontSize={11} />
+                                <YAxis stroke="hsl(var(--muted-foreground))" fontSize={12} tickFormatter={(value) => `₪${value >= 1000 ? (value / 1000).toFixed(0) + 'K' : value}`} />
+                                <Tooltip
+                                  content={({ active, payload, label }) => {
+                                    if (active && payload && payload.length) {
+                                      return (
+                                        <div className="bg-popover border border-border rounded-lg p-3 shadow-lg">
+                                          <p className="font-medium text-foreground">{label}</p>
+                                          <p className="text-primary" dir="ltr">₪{payload[0].value?.toLocaleString()}</p>
+                                        </div>
+                                      );
+                                    }
+                                    return null;
+                                  }}
+                                />
+                                <Bar
+                                  dataKey="cost"
+                                  fill="hsl(190, 60%, 50%)"
                                   radius={[4, 4, 0, 0]}
                                   onClick={(data) => handleBranchClick(data.name)}
                                   style={{ cursor: 'pointer' }}
